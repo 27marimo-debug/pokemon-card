@@ -158,6 +158,7 @@ tr.dim .nm{color:var(--text3)}
       <thead><tr>
         <th style="width:54px">No.</th>
         <th>カード名</th>
+        <th style="width:52px">タイプ</th>
         <th style="width:70px">レアリティ</th>
         <th class="r" style="width:46px">枚数</th>
       </tr></thead>
@@ -453,8 +454,8 @@ function renderCards(){
   tbody.innerHTML=cards.map(c=>{
     const dim=!c.qty;
     const qd=dim?'<span style="color:var(--text3)">—</span>':'<span style="color:var(--accent);font-weight:700">'+c.qty+'</span>';
-    const tc=c.type?'<br><span class="chip">'+c.type+'</span>':'';
-    return'<tr class="'+(dim?'dim':'')+'" onclick="openCard('+c.id+')"><td class="nc">'+(c.num||'—')+'</td><td class="nm">'+(c.name||'（未登録）')+tc+'</td><td class="rc">'+rbadge(c.rarity)+'</td><td class="qc r">'+qd+'</td></tr>';
+    const tc=c.type?'<span class="chip">'+c.type+'</span>':'<span style="color:var(--text3)">—</span>';
+    return'<tr class="'+(dim?'dim':'')+'" onclick="openCard('+c.id+')"><td class="nc">'+(c.num||'—')+'</td><td class="nm">'+(c.name||'（未登録）')+'</td><td class="rc" style="text-align:center;font-size:12px">'+tc+'</td><td class="rc">'+rbadge(c.rarity)+'</td><td class="qc r">'+qd+'</td></tr>';
   }).join('');
 }
 
