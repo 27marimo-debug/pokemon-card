@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>カード管理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#fff;--bg2:#f6f6f6;--bg3:#ececec;--text:#111;--text2:#666;--text3:#aaa;--border:#e4e4e4;--border2:#ccc;--accent:#3C3489;--red:#A32D2D;--red2:#FCEBEB;--r:10px;--rs:7px}
+@media(prefers-color-scheme:dark){:root{--bg:#181818;--bg2:#222;--bg3:#2a2a2a;--text:#f0f0f0;--text2:#999;--text3:#666;--border:#2e2e2e;--border2:#444}}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg2);color:var(--text);font-size:15px;padding-bottom:80px}
+button,input,select,textarea{font-family:inherit;color:var(--text)}
+button{cursor:pointer;border:none;background:none;touch-action:manipulation}
+
+.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.hdr h1{font-size:17px;font-weight:700}
+.hdr p{font-size:11px;color:var(--text3);margin-top:1px}
+.hdr-btns{display:flex;gap:8px}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+.bnav button{flex:1;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--text3);font-size:11px}
+.bnav button.on{color:var(--accent)}
+.bnav .ico{font-size:22px;line-height:1}
+
+.page{display:none}.page.on{display:block}
+
+.tabs-wrap{background:var(--bg);border-bottom:1px solid var(--border);overflow-x:auto;padding:0 12px;scrollbar-width:none}
+.tabs-wrap::-webkit-scrollbar{display:none}
+.tabs{display:inline-flex;gap:4px;padding:8px 0;white-space:nowrap}
+.tab{padding:6px 14px;border-radius:20px;font-size:13px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);font-weight:500}
+.tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.toolbar{display:flex;gap:6px;padding:10px 16px 0;align-items:center}
+.toolbar input{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);font-size:14px;outline:none}
+.toolbar select{padding:9px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);font-size:13px;max-width:100px;outline:none}
+.add-btn{display:flex;align-items:center;gap:3px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);font-size:13px;white-space:nowrap}
+
+.stat-row{display:flex;gap:6px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none}
+.stat-row::-webkit-scrollbar{display:none}
+.pill{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 12px;white-space:nowrap;font-size:12px;color:var(--text2);flex-shrink:0}
+.pill b{color:var(--text);font-weight:600}
+
+.tbl-wrap{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--text3);font-weight:500;padding:6px 8px;text-align:left;background:var(--bg2);border-bottom:1px solid var(--border)}
+th.r,td.r{text-align:right;padding-right:14px}
+td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:14px;background:var(--bg)}
+tr.dim td{background:var(--bg2)}
+tr.dim .nm{color:var(--text3)}
+.nm{font-weight:500;line-height:1.3}
+.chip{font-size:10px;padding:1px 5px;border-radius:4px;background:var(--bg3);color:var(--text2)}
+.nc{color:var(--text3);font-size:12px;width:54px;white-space:nowrap}
+.rc{width:70px}
+.qc{width:46px}
+.badge{font-size:11px;padding:2px 6px;border-radius:5px;font-weight:700;display:inline-block;white-space:nowrap}
+.b-ur{background:#FFF0F0;color:#8B0000}.b-ssr{background:#FFF8E1;color:#5D4037}
+.b-sar{background:#FAEEDA;color:#633806}.b-sr{background:#EEEDFE;color:#3C3489}
+.b-rr{background:#FBEAF0;color:#72243E}.b-r{background:#E6F1FB;color:#0C447C}
+.b-ar{background:#FAECE7;color:#712B13}.b-u{background:#E1F5EE;color:#085041}
+.b-c,.b-n{background:#F1EFE8;color:#5F5E5A}.b-s{background:#F0F4FF;color:#1A3A8F}
+.b-x{background:var(--bg3);color:var(--text2)}
+
+.lwrap{padding:12px 16px}
+.slabel{font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:16px 0 8px}
+.litem{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.litem.dragging{opacity:.35}
+.ldh{color:var(--text3);font-size:20px;cursor:grab;padding:0 2px;touch-action:none;user-select:none;flex-shrink:0}
+.lbody{flex:1;min-width:0}
+.lname{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lmeta{font-size:12px;color:var(--text3);margin-top:2px}
+.lright{text-align:right;flex-shrink:0}
+.lval{font-size:16px;font-weight:700}
+.lsub{font-size:11px;color:var(--text3)}
+.shrink-row{display:flex;gap:10px;margin-top:4px}
+.si{font-size:12px;color:var(--text2)}
+
+.fab{position:fixed;right:20px;bottom:calc(72px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(60,52,137,.35);z-index:40}
+
+.ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center}
+.ovl.on{display:flex}
+.modal{background:var(--bg);border-radius:var(--r) var(--r) 0 0;width:100%;max-height:92vh;overflow-y:scroll;padding-bottom:env(safe-area-inset-bottom)}
+.mbar{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:10px auto 0}
+.mhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+.mtitle{font-size:17px;font-weight:700}
+.mclose{width:32px;height:32px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:20px;font-weight:300}
+.mbody{padding:0 16px 4px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:var(--rs);background:var(--bg);font-size:15px;outline:none}
+.field textarea{height:58px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.mfoot{display:flex;gap:8px;padding:8px 16px 16px}
+.btn{flex:1;padding:13px;border-radius:var(--r);font-size:15px;font-weight:600;text-align:center;cursor:pointer}
+.btn-p{background:var(--accent);color:#fff;border:none}
+.btn-g{background:var(--bg2);color:var(--text2);border:1px solid var(--border)}
+.btn-d{background:var(--red2);color:var(--red);border:1px solid #F7C1C1;flex:0 0 auto;padding:13px 16px}
+.divider{height:1px;background:var(--border);margin:8px 0 14px}
+.hint{font-size:12px;color:var(--text3);margin-top:4px;line-height:1.5}
+.csv-area{width:100%;height:90px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);background:var(--bg);font-size:12px;font-family:monospace;resize:vertical;outline:none}
+
+.ser-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.ser-item:last-child{border-bottom:none}
+.dh{color:var(--text3);font-size:20px;cursor:grab;padding:0 4px;touch-action:none;user-select:none}
+.ser-info{flex:1;min-width:0}
+.sn{font-size:15px;font-weight:500}
+.sc{font-size:12px;color:var(--text3)}
+.del-btn{color:var(--red);font-size:12px;padding:5px 10px;border-radius:var(--rs);background:var(--red2);border:1px solid #F7C1C1;flex-shrink:0;cursor:pointer}
+
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tag{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--bg2);border:1px solid var(--border);font-size:13px}
+.tdel{color:var(--text3);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+.tadd{display:flex;gap:6px;margin-top:4px}
+.tadd input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--rs);background:var(--bg);font-size:14px;outline:none}
+.tadd button{padding:8px 14px;border-radius:var(--rs);background:var(--accent);color:#fff;font-size:14px;font-weight:600}
+
+.empty{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-ico{font-size:40px;margin-bottom:8px}
+
+.io-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px;border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);margin-bottom:10px;font-size:14px;text-align:left;cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none}
+.io-btn *{pointer-events:none}
+.io-btn .ib{font-weight:600}
+.io-btn .is{font-size:12px;color:var(--text3)}
+.io-btn-red{background:var(--red2);border-color:#F7C1C1}
+
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:12px}
+#loading p{font-size:14px;color:var(--text2)}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+<script type="application/json" id="mc-data">[]</script>
+</head>
+<body>
+
+<div id="loading"><div class="spin"></div><p>読み込み中...</p></div>
+
+<div class="hdr">
+  <div><h1 id="htitle">カードリスト</h1><p id="hsub"></p></div>
+  <div class="hdr-btns">
+    <button class="icon-btn" id="mgr-btn" onclick="openSer()">⚙️</button>
+    <button class="icon-btn" id="stype-btn" onclick="openStypeMgr()" style="display:none">⚙️</button>
+    <button class="icon-btn" onclick="openOvl('ovl-io')">📦</button>
+  </div>
+</div>
+
+<!-- カードページ -->
+<div id="page-cards" class="page on">
+  <div class="tabs-wrap"><div class="tabs" id="ser-tabs"></div></div>
+  <div class="stat-row" id="cstats"></div>
+  <div class="toolbar">
+    <input id="csearch" placeholder="🔍 カード名・番号で検索..." oninput="renderCards()">
+    <select id="crarity" onchange="renderCards()"><option value="">レア全て</option></select>
+    <button class="add-btn" onclick="openCard(0)">＋追加</button>
+  </div>
+  <div class="tbl-wrap">
+    <table id="ctbl">
+      <thead><tr>
+        <th style="width:54px">No.</th>
+        <th>カード名</th>
+        <th style="width:70px">レアリティ</th>
+        <th class="r" style="width:46px">枚数</th>
+      </tr></thead>
+      <tbody id="ctbody"></tbody>
+    </table>
+  </div>
+  <div id="cempty" class="empty" style="display:none"><div class="empty-ico">🃏</div><p>シリーズを選択してください</p></div>
+</div>
+
+<!-- BOXページ -->
+<div id="page-box" class="page">
+  <div class="toolbar" style="padding-bottom:10px">
+    <input id="bsearch" placeholder="🔍 シリーズ・BOX名..." oninput="renderBox()">
+    <select id="bser-filter" onchange="renderBox()" style="padding:9px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);font-size:13px;max-width:110px;outline:none"><option value="">全シリーズ</option></select>
+    <button class="add-btn" onclick="openBox(0)">＋追加</button>
+  </div>
+  <div class="lwrap" style="padding-top:0"><div id="box-list"></div></div>
+</div>
+
+<!-- セットページ -->
+<div id="page-set" class="page">
+  <div class="toolbar" style="padding-bottom:10px">
+    <input id="ssearch" placeholder="🔍 セット名..." oninput="renderSet()">
+    <select id="sser-filter" onchange="renderSet()" style="padding:9px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);font-size:13px;max-width:110px;outline:none"><option value="">全シリーズ</option></select>
+    <button class="add-btn" onclick="openSet(0)">＋追加</button>
+  </div>
+  <div class="lwrap" style="padding-top:0"><div id="set-list"></div></div>
+</div>
+
+<!-- ボトムナビ -->
+<div class="bnav">
+  <button class="on" onclick="goPage('cards',this)"><span class="ico">🃏</span><span>カード</span></button>
+  <button onclick="goPage('box',this)"><span class="ico">📦</span><span>BOX</span></button>
+  <button onclick="goPage('set',this)"><span class="ico">🎁</span><span>セット</span></button>
+</div>
+<button class="fab" onclick="onFab()">＋</button>
+
+<!-- 弾管理 -->
+<div class="ovl" id="ovl-ser">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle">シリーズを管理</div><button class="mclose" onclick="closeOvl('ovl-ser')">✕</button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">☰ を長押し→ドラッグで順番変更</p>
+      <div id="ser-manage"></div>
+      <div class="divider"></div>
+      <p style="font-size:14px;font-weight:600;margin-bottom:10px">新しいシリーズを追加</p>
+      <div class="field"><label>シリーズ名</label><input id="new-ser" placeholder="例：ナイトワンダラー"></div>
+      <div class="field"><label>カード総枚数（任意）</label><input id="new-ser-total" type="number" min="1" placeholder="例：100"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-g" onclick="closeOvl('ovl-ser')">閉じる</button>
+      <button class="btn btn-p" onclick="addSer()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- マスター設定 -->
+<div class="ovl" id="ovl-master">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle">マスター設定</div><button class="mclose" onclick="closeOvl('ovl-master')">✕</button></div>
+    <div class="mbody">
+      <p style="font-size:14px;font-weight:600;margin-bottom:10px">レアリティ</p>
+      <div class="tag-list" id="rar-tags"></div>
+      <div class="tadd"><input id="new-rar" placeholder="例：CHR"><button onclick="addTag('rar')">追加</button></div>
+      <div class="divider"></div>
+      <p style="font-size:14px;font-weight:600;margin-bottom:10px">セット種類</p>
+      <div class="tag-list" id="stype-tags"></div>
+      <div class="tadd"><input id="new-stype" placeholder="例：ギフトセット"><button onclick="addTag('stype')">追加</button></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-g" onclick="closeOvl('ovl-master')">閉じる</button></div>
+  </div>
+</div>
+
+<!-- カード追加・編集 -->
+<div class="ovl" id="ovl-card">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle" id="mc-ttl">カードを追加</div><button class="mclose" onclick="closeOvl('ovl-card')">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>シリーズ</label><select id="mc-ser"></select></div>
+      <div class="row2">
+        <div class="field"><label>収録番号</label><input id="mc-num" placeholder="006/165"></div>
+        <div class="field"><label>レアリティ</label><select id="mc-rar"></select></div>
+      </div>
+      <div class="field"><label>カード名</label><input id="mc-name" placeholder="カード名"></div>
+      <div class="row3">
+        <div class="field"><label>枚数</label><input id="mc-qty" type="number" min="0" value="0"></div>
+        <div class="field"><label>タイプ</label><input id="mc-type" placeholder="草/炎…"></div>
+        <div class="field"><label>状態</label><select id="mc-cond"><option>美品</option><option>良好</option><option>傷あり</option><option>プレイ用</option></select></div>
+      </div>
+      <div class="field"><label>メモ</label><textarea id="mc-memo"></textarea></div>
+      <div class="divider"></div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:6px">一括CSV入力</p>
+      <textarea class="csv-area" id="mc-csv" placeholder="番号,カード名,レアリティ,枚数&#10;001/165,フシギダネ,C,2&#10;006/165,リザードン ex,SR,1"></textarea>
+      <p class="hint">番号・カード名・レアリティ・枚数をカンマ区切りで複数行入力可</p>
+    </div>
+    <div class="mfoot" id="mc-foot"></div>
+  </div>
+</div>
+
+<!-- BOX追加・編集 -->
+<div class="ovl" id="ovl-box">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle" id="mb-ttl">BOXを追加</div><button class="mclose" onclick="closeOvl('ovl-box')">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>シリーズ</label><input id="mb-ser" placeholder="例：スカーレット＆バイオレット"></div>
+      <div class="field"><label>BOX名</label><input id="mb-name" placeholder="例：ポケモンカード151"></div>
+      <div class="row2">
+        <div class="field"><label>🔒 シュリンクあり</label><input id="mb-shrink" type="number" min="0" value="0"></div>
+        <div class="field"><label>🔓 シュリンクなし</label><input id="mb-noshrink" type="number" min="0" value="0"></div>
+      </div>
+      <div class="field"><label>メモ</label><textarea id="mb-memo"></textarea></div>
+    </div>
+    <div class="mfoot" id="mb-foot"></div>
+  </div>
+</div>
+
+<!-- セット追加・編集 -->
+<div class="ovl" id="ovl-set">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle" id="ms-ttl">セットを追加</div><button class="mclose" onclick="closeOvl('ovl-set')">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>種類</label><select id="ms-type"></select></div>
+      <div class="field"><label>セット名</label><input id="ms-name"></div>
+      <div class="field"><label>シリーズ</label><input id="ms-ser" placeholder="例：スカーレット＆バイオレット"></div>
+      <div class="field"><label>個数</label><input id="ms-qty" type="number" min="1" value="1"></div>
+      <div class="field"><label>メモ</label><textarea id="ms-memo"></textarea></div>
+    </div>
+    <div class="mfoot" id="ms-foot"></div>
+  </div>
+</div>
+
+<!-- セット種類管理 -->
+<div class="ovl" id="ovl-stype">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle">セット種類を管理</div><button class="mclose" onclick="closeOvl('ovl-stype')">✕</button></div>
+    <div class="mbody">
+      <div class="tag-list" id="stype-tags2"></div>
+      <div class="tadd">
+        <input id="new-stype2" placeholder="例：ギフトセット">
+        <button onclick="addStypeFromMgr()">追加</button>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn btn-g" onclick="closeOvl('ovl-stype')">閉じる</button></div>
+  </div>
+</div>
+
+<!-- データ管理 -->
+<div class="ovl" id="ovl-io">
+  <div class="modal">
+    <div class="mbar"></div>
+    <div class="mhead"><div class="mtitle">データ管理</div><button class="mclose" onclick="closeOvl('ovl-io')">✕</button></div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">データはこの端末に保存されます。バックアップで他の端末と共有できます。</p>
+      <button class="io-btn" onclick="closeOvl('ovl-io');openOvl('ovl-master')">
+        <span style="font-size:22px">⚙️</span>
+        <div><div class="ib">マスター設定</div><div class="is">レアリティ・セット種類を編集</div></div>
+      </button>
+      <button class="io-btn" onclick="doExport()">
+        <span style="font-size:22px">📤</span>
+        <div><div class="ib">バックアップ（書き出し）</div><div class="is">JSONファイルとして保存</div></div>
+      </button>
+      <button class="io-btn" onclick="document.getElementById('imp-file').click()">
+        <span style="font-size:22px">📥</span>
+        <div><div class="ib">読み込み（復元）</div><div class="is">バックアップファイルを選択</div></div>
+      </button>
+      <input type="file" id="imp-file" accept=".json" style="display:none" onchange="doImport(event)">
+      <button class="io-btn io-btn-red" onclick="doReset()">
+        <span style="font-size:22px">🗑️</span>
+        <div><div class="ib" style="color:var(--red)">データをリセット</div><div class="is" style="color:#A32D2D">全データを削除（取り消し不可）</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MS=[];
+const MC=[];//loaded below
+const SKEY='pkm_v5';
+const DEF_RAR=['UR','SSR','SAR','SR','RR','R','AR','U','C','N','S','A','K'];
+const DEF_STY=['スペシャルセット','デッキセット','ギフトセット','プレミアムセット'];
+
+let db={series:[],cards:[],boxes:[],sets:[],rarities:[],setTypes:[]};
+let nid={c:1,b:1,s:1,ser:1};
+let curPage='cards';
+let curSer=null;
+let editId=null;
+let editType=null;
+let dragSrc=null;
+let dragSrc2=null;
+let touchItem=null,touchClone=null,touchY=0;
+
+function persist(){try{localStorage.setItem(SKEY,JSON.stringify({db,nid}));}catch(e){}}
+
+function init(){
+  try{const r=localStorage.getItem(SKEY);if(r){const d=JSON.parse(r);if(d&&d.db&&d.db.series&&d.db.series.length){db=d.db;nid=d.nid;}}}catch(e){}
+  if(!db.series.length){
+    var mcData=JSON.parse(document.getElementById('mc-data').textContent);
+    db.series=MS.map(function(s){return Object.assign({},s);});
+    db.cards=mcData.map(function(c){return Object.assign({},c);});
+    nid.c=mcData.length+1;nid.ser=MS.length+1;
+  }
+  if(!db.rarities||!db.rarities.length)db.rarities=[...DEF_RAR];
+  if(!db.setTypes||!db.setTypes.length)db.setTypes=[...DEF_STY];
+  persist();
+  document.getElementById('loading').style.display='none';
+  renderSerTabs();renderCards();
+}
+
+function goPage(p,btn){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.bnav button').forEach(e=>e.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  btn.classList.add('on');
+  curPage=p;
+  const t={cards:'カードリスト',box:'BOX在庫',set:'セット在庫'};
+  document.getElementById('htitle').textContent=t[p]||'';
+  document.getElementById('hsub').textContent=p==='cards'?'':'';
+  document.getElementById('mgr-btn').style.display=p==='cards'?'':'none';
+  document.getElementById('stype-btn').style.display=p==='set'?'':'none';
+  if(p==='cards'){renderSerTabs();renderCards();}
+  if(p==='box')renderBox();
+  if(p==='set')renderSet();
+}
+function onFab(){
+  if(curPage==='cards')openCard(0);
+  if(curPage==='box')openBox(0);
+  if(curPage==='set')openSet(0);
+}
+
+/* ===== 弾タブ ===== */
+function renderSerTabs(){
+  const w=document.getElementById('ser-tabs');
+  if(!db.series.length){w.innerHTML='';document.getElementById('hsub').textContent='シリーズを追加してください';return;}
+  if(!curSer||!db.series.find(s=>s.id===curSer))curSer=db.series[0].id;
+  w.innerHTML=db.series.map(s=>
+    '<button class="tab'+(s.id===curSer?' on':'')+'" onclick="selSer('+s.id+')">'+s.name+'</button>'
+  ).join('');
+  const cur=db.series.find(s=>s.id===curSer);
+  document.getElementById('hsub').textContent=cur?cur.name:'';
+}
+function selSer(id){
+  curSer=id;
+  document.getElementById('csearch').value='';
+  document.getElementById('crarity').value='';
+  renderSerTabs();renderCards();
+}
+
+/* ===== バッジ ===== */
+function rbadge(r){
+  if(!r)return'';
+  const m={UR:'b-ur',SSR:'b-ssr',SAR:'b-sar',SR:'b-sr',RR:'b-rr',R:'b-r',AR:'b-ar',U:'b-u',C:'b-c',N:'b-n',S:'b-s'};
+  return'<span class="badge '+(m[r]||'b-x')+'">'+r+'</span>';
+}
+
+/* ===== カードリスト ===== */
+function renderCards(){
+  const q=(document.getElementById('csearch').value||'').toLowerCase();
+  const fr=document.getElementById('crarity').value;
+  const tbody=document.getElementById('ctbody');
+  const empty=document.getElementById('cempty');
+  if(!curSer){empty.style.display='block';document.getElementById('ctbl').style.display='none';document.getElementById('cstats').innerHTML='';return;}
+  document.getElementById('ctbl').style.display='';empty.style.display='none';
+  const ser=db.series.find(s=>s.id===curSer);
+  let cards=db.cards.filter(c=>c.seriesId===curSer);
+  const rars=[...new Set(cards.map(c=>c.rarity).filter(Boolean))];
+  const rsel=document.getElementById('crarity');
+  const pr=rsel.value;
+  rsel.innerHTML='<option value="">レア全て</option>'+rars.map(r=>'<option'+(r===pr?' selected':'')+'>'+r+'</option>').join('');
+  if(q)cards=cards.filter(c=>(c.name+c.num).toLowerCase().includes(q));
+  if(fr)cards=cards.filter(c=>c.rarity===fr);
+  cards.sort((a,b)=>{
+    const na=parseInt((a.num||'').replace(/[^0-9]/g,''))||0,nb=parseInt((b.num||'').replace(/[^0-9]/g,''))||0;
+    return na-nb||(a.name||'').localeCompare(b.name||'','ja');
+  });
+  const all=db.cards.filter(c=>c.seriesId===curSer);
+  const owned=all.filter(c=>c.qty>0).length;
+  const tot=ser&&ser.total>0?ser.total:null;
+  const srCnt=all.filter(c=>['SR','SAR','SSR','UR'].includes(c.rarity)&&c.qty>0).length;
+  const compRate=tot&&tot>0?Math.floor(owned/tot*100):null;
+  document.getElementById('cstats').innerHTML=
+    '<div class="pill">登録 <b>'+all.length+'種</b></div>'+
+    (tot?'<div class="pill">所持 <b>'+owned+'/'+tot+'</b></div>':'<div class="pill">所持あり <b>'+owned+'種</b></div>')+
+    (compRate!==null?'<div class="pill">コンプ率 <b>'+compRate+'%</b></div>':'')+
+    '<div class="pill">SR以上 <b>'+srCnt+'種</b></div>'+
+    '<div class="pill">合計 <b>'+all.reduce((s,c)=>s+Number(c.qty||0),0)+'枚</b></div>';
+  if(!cards.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text3);font-size:13px">該当なし</td></tr>';return;}
+  tbody.innerHTML=cards.map(c=>{
+    const dim=!c.qty;
+    const qd=dim?'<span style="color:var(--text3)">—</span>':'<span style="color:var(--accent);font-weight:700">'+c.qty+'</span>';
+    const tc=c.type?'<br><span class="chip">'+c.type+'</span>':'';
+    return'<tr class="'+(dim?'dim':'')+'" onclick="openCard('+c.id+')"><td class="nc">'+(c.num||'—')+'</td><td class="nm">'+(c.name||'（未登録）')+tc+'</td><td class="rc">'+rbadge(c.rarity)+'</td><td class="qc r">'+qd+'</td></tr>';
+  }).join('');
+}
+
+/* ===== カードモーダル ===== */
+function openCard(id){
+  const c=id?db.cards.find(x=>x.id===id):null;
+  editId=id;editType='card';
+  document.getElementById('mc-ttl').textContent=c?'カードを編集':'カードを追加';
+  const ss=document.getElementById('mc-ser');
+  ss.innerHTML=db.series.map(s=>'<option value="'+s.id+'"'+(c&&c.seriesId===s.id?' selected':'')+'>'+s.name+'</option>').join('');
+  if(!c&&curSer)ss.value=curSer;
+  const rs=document.getElementById('mc-rar');
+  rs.innerHTML='<option value="">—</option>'+db.rarities.map(r=>'<option'+(c&&c.rarity===r?' selected':'')+'>'+r+'</option>').join('');
+  document.getElementById('mc-num').value=c?c.num||'':'';
+  document.getElementById('mc-name').value=c?c.name||'':'';
+  document.getElementById('mc-qty').value=c?c.qty||0:0;
+  document.getElementById('mc-type').value=c?c.type||'':'';
+  document.getElementById('mc-cond').value=c?c.condition||'美品':'美品';
+  document.getElementById('mc-memo').value=c?c.memo||'':'';
+  document.getElementById('mc-csv').value='';
+  const f=document.getElementById('mc-foot');
+  f.innerHTML='';
+  if(c){const d=document.createElement('button');d.className='btn btn-d';d.textContent='削除';d.onclick=delItem;f.appendChild(d);}
+  const g=document.createElement('button');g.className='btn btn-g';g.textContent='キャンセル';g.onclick=function(){closeOvl('ovl-card');};f.appendChild(g);
+  const p=document.createElement('button');p.className='btn btn-p';p.textContent='保存';p.onclick=saveCard;f.appendChild(p);
+  openOvl('ovl-card');
+}
+function saveCard(){
+  const sid=parseInt(document.getElementById('mc-ser').value);
+  if(!sid){alert('シリーズを選択してください');return;}
+  const csv=document.getElementById('mc-csv').value.trim();
+  if(csv){
+    csv.split('\n').filter(l=>l.trim()).forEach(line=>{
+      const p=line.split(',').map(s=>s.trim());
+      db.cards.push({id:nid.c++,seriesId:sid,num:p[0]||'',name:p[1]||'',rarity:p[2]||'',qty:Math.max(0,parseInt(p[3])||0),type:'',condition:'美品',memo:''});
+    });
+    persist();closeOvl('ovl-card');renderSerTabs();renderCards();return;
+  }
+  const name=document.getElementById('mc-name').value.trim();
+  if(!name){alert('カード名を入力してください');return;}
+  const obj={id:editId||nid.c++,seriesId:sid,num:document.getElementById('mc-num').value.trim(),name,
+    rarity:document.getElementById('mc-rar').value,qty:Math.max(0,parseInt(document.getElementById('mc-qty').value)||0),
+    type:document.getElementById('mc-type').value.trim(),condition:document.getElementById('mc-cond').value,
+    memo:document.getElementById('mc-memo').value.trim()};
+  if(editId)db.cards=db.cards.map(x=>x.id===editId?obj:x);else db.cards.push(obj);
+  persist();closeOvl('ovl-card');renderSerTabs();renderCards();
+}
+
+/* ===== 弾管理 ===== */
+function openSer(){
+  renderSerManage();
+  document.getElementById('new-ser').value='';
+  document.getElementById('new-ser-total').value='';
+  openOvl('ovl-ser');
+}
+function renderSerManage(){
+  const el=document.getElementById('ser-manage');
+  if(!db.series.length){el.innerHTML='<p style="color:var(--text3);font-size:13px;padding:8px 0">弾がありません</p>';return;}
+  el.innerHTML=db.series.map((s,i)=>{
+    const cnt=db.cards.filter(c=>c.seriesId===s.id).length;
+    const own=db.cards.filter(c=>c.seriesId===s.id&&c.qty>0).length;
+    return'<div class="ser-item" draggable="true" data-i="'+i+'" ondragstart="dStart(event)" ondragover="dOver(event)" ondrop="dDrop(event)" ondragend="dEnd()">'+
+      '<span class="dh" ontouchstart="tStart(event)" ontouchmove="tMove(event)" ontouchend="tEnd(event)">☰</span>'+
+      '<div class="ser-info"><div class="sn">'+s.name+'</div><div class="sc">'+cnt+'種 / 所持'+own+'種</div></div>'+
+      '<button class="del-btn" onclick="delSer('+s.id+')">削除</button>'+
+    '</div>';
+  }).join('');
+}
+function addSer(){
+  const name=document.getElementById('new-ser').value.trim();
+  if(!name){alert('シリーズ名を入力してください');return;}
+  const total=parseInt(document.getElementById('new-ser-total').value)||0;
+  db.series.unshift({id:nid.ser++,name,total});
+  document.getElementById('new-ser').value='';
+  document.getElementById('new-ser-total').value='';
+  persist();renderSerManage();renderSerTabs();
+}
+function delSer(id){
+  var i;
+  for(i=db.series.length-1;i>=0;i--){if(db.series[i].id===id)db.series.splice(i,1);}
+  for(i=db.cards.length-1;i>=0;i--){if(db.cards[i].seriesId===id)db.cards.splice(i,1);}
+  if(curSer===id)curSer=db.series[0]?db.series[0].id:null;
+  persist();renderSerManage();renderSerTabs();renderCards();
+}
+function dStart(e){dragSrc=e.currentTarget;e.dataTransfer.effectAllowed='move';}
+function dOver(e){e.preventDefault();}
+function dEnd(){dragSrc=null;}
+function dDrop(e){
+  e.preventDefault();
+  const t=e.currentTarget;
+  if(!dragSrc||dragSrc===t)return;
+  const fi=parseInt(dragSrc.dataset.i),ti=parseInt(t.dataset.i);
+  if(isNaN(fi)||isNaN(ti))return;
+  const m=db.series.splice(fi,1)[0];db.series.splice(ti,0,m);
+  persist();renderSerManage();renderSerTabs();
+}
+function tStart(e){
+  e.stopPropagation();
+  e.preventDefault();
+  touchItem=e.currentTarget.closest('.ser-item');touchY=e.touches[0].clientY;
+  const r=touchItem.getBoundingClientRect();
+  touchClone=touchItem.cloneNode(true);
+  touchClone.style.cssText='position:fixed;left:'+r.left+'px;top:'+r.top+'px;width:'+touchItem.offsetWidth+'px;opacity:.85;z-index:999;pointer-events:none;background:var(--bg);border:1px solid var(--accent);border-radius:var(--rs)';
+  document.body.appendChild(touchClone);
+  touchItem.style.opacity='.3';
+}
+function tMove(e){
+  if(!touchClone)return;e.preventDefault();
+  const dy=e.touches[0].clientY-touchY;
+  touchClone.style.top=(parseFloat(touchClone.style.top)+dy)+'px';
+  touchY=e.touches[0].clientY;
+}
+function tEnd(e){
+  if(!touchClone||!touchItem)return;
+  const pt=e.changedTouches[0];
+  touchClone.style.display='none';
+  const el=document.elementFromPoint(pt.clientX,pt.clientY);
+  const tgt=el?el.closest('.ser-item'):null;
+  if(tgt&&tgt!==touchItem){
+    const fi=parseInt(touchItem.dataset.i),ti=parseInt(tgt.dataset.i);
+    const m=db.series.splice(fi,1)[0];db.series.splice(ti,0,m);
+    persist();renderSerManage();renderSerTabs();
+  }
+  touchClone.remove();touchClone=null;touchItem.style.opacity='';touchItem=null;
+}
+
+/* ===== リスト並び替え（BOX・セット共通） ===== */
+let dragSrcL=null;
+function dStartL(e,type){
+  dragSrcL={el:e.currentTarget,type};
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{if(dragSrcL)dragSrcL.el.classList.add('dragging');},0);
+}
+function dOverL(e){e.preventDefault();}
+function dEndL(){if(dragSrcL){dragSrcL.el.classList.remove('dragging');dragSrcL=null;}}
+function dDropL(e,type){
+  e.preventDefault();
+  const t=e.currentTarget;
+  if(!dragSrcL||dragSrcL.el===t||dragSrcL.type!==type)return;
+  const fi=parseInt(dragSrcL.el.dataset.ri),ti=parseInt(t.dataset.ri);
+  if(isNaN(fi)||isNaN(ti))return;
+  const arr=type==='box'?db.boxes:db.sets;
+  const m=arr.splice(fi,1)[0];arr.splice(ti,0,m);
+  persist();
+  if(type==='box')renderBox();else renderSet();
+  dragSrcL=null;
+}
+let touchItemL=null,touchCloneL=null,touchYL=0,touchTypeL='';
+function tStartL(e,type){
+  e.stopPropagation();e.preventDefault();
+  touchItemL=e.currentTarget.closest('.litem');touchYL=e.touches[0].clientY;touchTypeL=type;
+  const r=touchItemL.getBoundingClientRect();
+  touchCloneL=touchItemL.cloneNode(true);
+  touchCloneL.style.cssText='position:fixed;left:'+r.left+'px;top:'+r.top+'px;width:'+touchItemL.offsetWidth+'px;opacity:.85;z-index:999;pointer-events:none;background:var(--bg);border:1px solid var(--accent);border-radius:var(--r)';
+  document.body.appendChild(touchCloneL);
+  touchItemL.style.opacity='.3';
+}
+function tMoveL(e){
+  if(!touchCloneL)return;e.preventDefault();
+  const dy=e.touches[0].clientY-touchYL;
+  touchCloneL.style.top=(parseFloat(touchCloneL.style.top)+dy)+'px';
+  touchYL=e.touches[0].clientY;
+}
+function tEndL(e,type){
+  if(!touchCloneL||!touchItemL)return;
+  const pt=e.changedTouches[0];
+  touchCloneL.style.display='none';
+  const el=document.elementFromPoint(pt.clientX,pt.clientY);
+  const tgt=el?el.closest('.litem'):null;
+  if(tgt&&tgt!==touchItemL){
+    const fi=parseInt(touchItemL.dataset.ri),ti=parseInt(tgt.dataset.ri);
+    if(!isNaN(fi)&&!isNaN(ti)){
+      const arr=type==='box'?db.boxes:db.sets;
+      const m=arr.splice(fi,1)[0];arr.splice(ti,0,m);
+      persist();
+    }
+  }
+  touchCloneL.remove();touchCloneL=null;touchItemL.style.opacity='';touchItemL=null;
+  if(type==='box')renderBox();else renderSet();
+}
+
+/* ===== マスター設定 ===== */
+function renderTags(){
+  document.getElementById('rar-tags').innerHTML=db.rarities.map((r,i)=>
+    '<div class="tag">'+r+'<span class="tdel" onclick="delTag(\'rar\','+i+')">×</span></div>').join('');
+  document.getElementById('stype-tags').innerHTML=db.setTypes.map((t,i)=>
+    '<div class="tag">'+t+'<span class="tdel" onclick="delTag(\'stype\','+i+')">×</span></div>').join('');
+}
+function renderStypeTags(){
+  document.getElementById('stype-tags2').innerHTML=db.setTypes.map((t,i)=>
+    '<div class="tag">'+t+'<span class="tdel" onclick="delStype('+i+')">×</span></div>').join('');
+}
+function openStypeMgr(){
+  renderStypeTags();
+  document.getElementById('new-stype2').value='';
+  openOvl('ovl-stype');
+}
+function addStypeFromMgr(){
+  const inp=document.getElementById('new-stype2');
+  const v=inp.value.trim();if(!v)return;
+  if(!db.setTypes.includes(v))db.setTypes.push(v);
+  inp.value='';persist();renderStypeTags();renderTags();
+}
+function delStype(i){
+  db.setTypes.splice(i,1);
+  persist();renderStypeTags();renderTags();
+}
+function addTag(k){
+  const inp=document.getElementById(k==='rar'?'new-rar':'new-stype');
+  const v=inp.value.trim();if(!v)return;
+  if(k==='rar'){if(!db.rarities.includes(v))db.rarities.push(v);}
+  else{if(!db.setTypes.includes(v))db.setTypes.push(v);}
+  inp.value='';persist();renderTags();
+  if(k==='rar')renderCards();
+}
+function delTag(k,i){
+  if(k==='rar')db.rarities.splice(i,1);else db.setTypes.splice(i,1);
+  persist();renderTags();
+  if(k==='rar')renderCards();
+}
+// マスターモーダルを開く時にタグを描画
+const origOpenOvl=openOvl;
+function openOvl(id){
+  document.getElementById(id).classList.add('on');
+  if(id==='ovl-master')renderTags();
+}
+
+/* ===== BOX ===== */
+function getBoxSeriesList(){
+  return [...new Set((db.boxes||[]).map(b=>b.series).filter(Boolean))].sort();
+}
+function updateBoxSerFilter(){
+  const sel=document.getElementById('bser-filter');
+  const cur=sel.value;
+  const series=getBoxSeriesList();
+  sel.innerHTML='<option value="">全シリーズ</option>'+series.map(s=>'<option'+(s===cur?' selected':'')+'>'+s+'</option>').join('');
+}
+function renderBox(){
+  updateBoxSerFilter();
+  const q=(document.getElementById('bsearch').value||'').toLowerCase();
+  const sf=document.getElementById('bser-filter').value;
+  const el=document.getElementById('box-list');
+  let boxes=db.boxes||[];
+  if(q)boxes=boxes.filter(b=>(b.name+(b.series||'')).toLowerCase().includes(q));
+  if(sf)boxes=boxes.filter(b=>b.series===sf);
+  if(!boxes.length){el.innerHTML='<div class="empty"><div class="empty-ico">📦</div><p>BOXがありません</p></div>';return;}
+  el.innerHTML=boxes.map(function(b){
+    var realIdx=(db.boxes||[]).indexOf(b);
+    return '<div class="litem" draggable="true" data-id="'+b.id+'" data-ri="'+realIdx+'"'+
+      ' ondragstart="dStartL(event,\'box\')" ondragover="dOverL(event)" ondrop="dDropL(event,\'box\')" ondragend="dEndL()"'+
+      '><span class="ldh" ontouchstart="tStartL(event,\'box\')" ontouchmove="tMoveL(event)" ontouchend="tEndL(event,\'box\')">☰</span><div style="font-size:26px">📦</div><div class="lbody"><div class="lname">'+b.name+'</div>'+(b.series?'<div class="lmeta">'+b.series+'</div>':'')+'<div class="shrink-row"><span class="si">🔒 '+(b.shrink||0)+'</span><span class="si">🔓 '+(b.noshrink||0)+'</span></div>'+(b.memo?'<div class="lmeta">'+b.memo+'</div>':'')+'</div><div class="lright"><div class="lval">'+((b.shrink||0)+(b.noshrink||0))+'</div><div class="lsub">合計BOX</div></div></div>';
+  }).join('');
+}
+function openBox(id){
+  const b=id?(db.boxes||[]).find(x=>x.id===id):null;
+  editId=id;editType='box';
+  document.getElementById('mb-ttl').textContent=b?'BOXを編集':'BOXを追加';
+  document.getElementById('mb-ser').value=b?b.series||'':'';
+  document.getElementById('mb-name').value=b?b.name:'';
+  document.getElementById('mb-shrink').value=b?b.shrink||0:0;
+  document.getElementById('mb-noshrink').value=b?b.noshrink||0:0;
+  document.getElementById('mb-memo').value=b?b.memo||'':'';
+  const f=document.getElementById('mb-foot');f.innerHTML='';
+  if(b){const d=document.createElement('button');d.className='btn btn-d';d.textContent='削除';d.onclick=delItem;f.appendChild(d);}
+  const g=document.createElement('button');g.className='btn btn-g';g.textContent='キャンセル';g.onclick=function(){closeOvl('ovl-box');};f.appendChild(g);
+  const p=document.createElement('button');p.className='btn btn-p';p.textContent='保存';p.onclick=saveBox;f.appendChild(p);
+  openOvl('ovl-box');
+}
+function saveBox(){
+  const name=document.getElementById('mb-name').value.trim();
+  if(!name){alert('BOX名を入力してください');return;}
+  if(!db.boxes)db.boxes=[];
+  const obj={id:editId||nid.b++,name,series:document.getElementById('mb-ser').value.trim(),
+    shrink:Math.max(0,parseInt(document.getElementById('mb-shrink').value)||0),
+    noshrink:Math.max(0,parseInt(document.getElementById('mb-noshrink').value)||0),
+    memo:document.getElementById('mb-memo').value.trim()};
+  if(editId)db.boxes=db.boxes.map(x=>x.id===editId?obj:x);else db.boxes.push(obj);
+  persist();closeOvl('ovl-box');renderBox();
+}
+
+/* ===== セット ===== */
+function getSetSeriesList(){
+  return [...new Set((db.sets||[]).map(s=>s.series).filter(Boolean))].sort();
+}
+function updateSetSerFilter(){
+  const sel=document.getElementById('sser-filter');
+  const cur=sel.value;
+  const series=getSetSeriesList();
+  sel.innerHTML='<option value="">全シリーズ</option>'+series.map(s=>'<option'+(s===cur?' selected':'')+'>'+s+'</option>').join('');
+}
+function renderSet(){
+  updateSetSerFilter();
+  const q=(document.getElementById('ssearch').value||'').toLowerCase();
+  const sf=document.getElementById('sser-filter').value;
+  const el=document.getElementById('set-list');
+  let sets=db.sets||[];
+  if(q)sets=sets.filter(s=>s.name.toLowerCase().includes(q));
+  if(sf)sets=sets.filter(s=>s.series===sf);
+  if(!sets.length){el.innerHTML='<div class="empty"><div class="empty-ico">🎁</div><p>セットがありません</p></div>';return;}
+  el.innerHTML=sets.map((s,vi)=>{
+    const realIdx=(db.sets||[]).indexOf(s);
+    return '<div class="litem" draggable="true" data-id="'+s.id+'" data-ri="'+realIdx+'"'+
+      ' ondragstart="dStartL(event,\'set\')" ondragover="dOverL(event)" ondrop="dDropL(event,\'set\')" ondragend="dEndL()"'+
+      '><span class="ldh" ontouchstart="tStartL(event,\'set\')" ontouchmove="tMoveL(event)" ontouchend="tEndL(event,\'set\')">☰</span><div style="font-size:26px">🎁</div><div class="lbody"><div class="lname">'+s.name+'</div>'+(s.type?'<div class="lmeta">'+s.type+'</div>':'')+(s.series?'<div class="lmeta">'+s.series+'</div>':'')+(s.memo?'<div class="lmeta">'+s.memo+'</div>':'')+'</div><div class="lright"><div class="lval">'+s.qty+'個</div></div></div>';
+  }).join('');
+}
+function openSet(id){
+  const s=id?(db.sets||[]).find(x=>x.id===id):null;
+  editId=id;editType='set';
+  document.getElementById('ms-ttl').textContent=s?'セットを編集':'セットを追加';
+  const ts=document.getElementById('ms-type');
+  ts.innerHTML=db.setTypes.map(t=>'<option'+(s&&s.type===t?' selected':'')+'>'+t+'</option>').join('');
+  document.getElementById('ms-name').value=s?s.name:'';
+  document.getElementById('ms-ser').value=s?s.series||'':'';
+  document.getElementById('ms-qty').value=s?s.qty||1:1;
+  document.getElementById('ms-memo').value=s?s.memo||'':'';
+  const f=document.getElementById('ms-foot');f.innerHTML='';
+  if(s){const d=document.createElement('button');d.className='btn btn-d';d.textContent='削除';d.onclick=delItem;f.appendChild(d);}
+  const g=document.createElement('button');g.className='btn btn-g';g.textContent='キャンセル';g.onclick=function(){closeOvl('ovl-set');};f.appendChild(g);
+  const p=document.createElement('button');p.className='btn btn-p';p.textContent='保存';p.onclick=saveSet;f.appendChild(p);
+  openOvl('ovl-set');
+}
+function saveSet(){
+  const name=document.getElementById('ms-name').value.trim();
+  if(!name){alert('セット名を入力してください');return;}
+  if(!db.sets)db.sets=[];
+  const obj={id:editId||nid.s++,name,type:document.getElementById('ms-type').value,
+    series:document.getElementById('ms-ser').value.trim(),
+    qty:Math.max(1,parseInt(document.getElementById('ms-qty').value)||1),
+    memo:document.getElementById('ms-memo').value.trim()};
+  if(editId)db.sets=db.sets.map(x=>x.id===editId?obj:x);else db.sets.push(obj);
+  persist();closeOvl('ovl-set');renderSet();
+}
+
+/* ===== 削除 ===== */
+function delItem(){
+  var id=editId;
+  var i,arr;
+  if(editType==='card'){
+    arr=db.cards;
+    for(i=arr.length-1;i>=0;i--){if(arr[i].id===id)arr.splice(i,1);}
+  } else if(editType==='box'){
+    arr=db.boxes||[];
+    for(i=arr.length-1;i>=0;i--){if(arr[i].id===id)arr.splice(i,1);}
+    db.boxes=arr;
+  } else if(editType==='set'){
+    arr=db.sets||[];
+    for(i=arr.length-1;i>=0;i--){if(arr[i].id===id)arr.splice(i,1);}
+    db.sets=arr;
+  }
+  persist();
+  closeOvl('ovl-'+editType);
+  if(editType==='card'){renderSerTabs();renderCards();}
+  else if(editType==='box')renderBox();
+  else renderSet();
+}
+
+/* ===== I/O ===== */
+function doExport(){
+  const blob=new Blob([JSON.stringify({db,nid,version:1},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='pokemon_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+function doImport(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=function(ev){
+    try{const d=JSON.parse(ev.target.result);db=d.db;nid=d.nid;persist();closeOvl('ovl-io');renderSerTabs();renderCards();alert('読み込み完了！');}
+    catch(err){alert('読み込みエラー：ファイルを確認してください');}
+  };
+  r.readAsText(f);e.target.value='';
+}
+function doReset(){
+  localStorage.removeItem(SKEY);location.reload();
+}
+
+/* ===== モーダル ===== */
+function closeOvl(id){document.getElementById(id).classList.remove('on');}
+
+// ovl背景タップで閉じる（modalには伝播させない）
+document.querySelectorAll('.ovl').forEach(function(el){
+  el.addEventListener('click',function(e){
+    if(e.target===this)this.classList.remove('on');
+  });
+});
+
+// litemのタップ（BOX・セット）はclick委譲で処理
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('box-list').addEventListener('click',function(e){
+    var li=e.target.closest('.litem[data-id]');
+    if(li&&!e.target.closest('.ldh'))openBox(parseInt(li.dataset.id));
+  });
+  document.getElementById('set-list').addEventListener('click',function(e){
+    var li=e.target.closest('.litem[data-id]');
+    if(li&&!e.target.closest('.ldh'))openSet(parseInt(li.dataset.id));
+  });
+});
+
+init();
+</script>
+</body>
+</html>
