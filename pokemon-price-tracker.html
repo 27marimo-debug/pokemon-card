@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ポケカ買取メモ</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface2: #f2f2f7;
+    --border: #d1d1d6;
+    --text: #1c1c1e;
+    --text2: #6c6c70;
+    --text3: #aeaeb2;
+    --accent: #0071e3;
+    --accent2: #34aadc;
+    --green: #34c759;
+    --red: #ff3b30;
+    --orange: #ff9500;
+    --yellow: #ffcc00;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    --radius: 13px;
+    --radius-sm: 8px;
+    --tab-h: 44px;
+    --nav-h: 56px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --surface: #2c2c2e;
+      --surface2: #3a3a3c;
+      --border: #3a3a3c;
+      --text: #ffffff;
+      --text2: #aeaeb2;
+      --text3: #636366;
+      --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', sans-serif; font-size: 15px; }
+  body { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
+
+  /* ── ヘッダー ── */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: env(safe-area-inset-top) 0 0;
+  }
+  @media (prefers-color-scheme: dark) {
+    .header { background: rgba(28,28,30,.85); }
+  }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: var(--nav-h); padding: 0 16px;
+  }
+  .header h1 { font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--surface2); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--accent); touch-action: manipulation;
+  }
+
+  /* ── タブ ── */
+  .tab-bar {
+    display: flex; height: var(--tab-h); padding: 6px;
+    background: var(--surface2); margin: 0 16px 0;
+    border-radius: 11px; gap: 4px;
+  }
+  .tab-btn {
+    flex: 1; border: none; background: transparent; border-radius: 8px;
+    font-size: 14px; font-weight: 600; color: var(--text2);
+    cursor: pointer; touch-action: manipulation; transition: all .2s;
+  }
+  .tab-btn.active {
+    background: var(--surface); color: var(--text);
+    box-shadow: var(--shadow);
+  }
+
+  /* ── コンテンツ ── */
+  .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 16px 100px; }
+
+  /* ── セクションヘッダー ── */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 4px; margin-top: 8px;
+  }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+  .add-btn {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 14px; font-weight: 600; color: var(--accent);
+    background: none; border: none; cursor: pointer; touch-action: manipulation;
+  }
+
+  /* ── カードリスト ── */
+  .card-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .card-row {
+    display: flex; align-items: center; background: var(--surface);
+    padding: 12px 14px; gap: 10px; cursor: pointer; touch-action: manipulation;
+    transition: background .15s;
+  }
+  .card-row:active { background: var(--surface2); }
+  .card-row-icon { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+  .card-row-body { flex: 1; min-width: 0; }
+  .card-row-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-row-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .card-row-right { text-align: right; flex-shrink: 0; }
+  .price-main { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .price-diff { font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .diff-up { color: var(--green); }
+  .diff-down { color: var(--red); }
+  .diff-flat { color: var(--text3); }
+  .chevron { color: var(--text3); font-size: 13px; margin-left: 4px; }
+
+  /* ── 空状態 ── */
+  .empty { text-align: center; padding: 48px 16px; color: var(--text2); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; font-weight: 500; }
+  .empty-sub { font-size: 13px; color: var(--text3); margin-top: 4px; }
+
+  /* ── モーダル共通 ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: none; align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    width: 100%; max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 0; }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-size: 17px; font-weight: 700; }
+  .modal-close { font-size: 22px; color: var(--text2); background: none; border: none; cursor: pointer; touch-action: manipulation; padding: 0 4px; }
+  .modal-body { padding: 16px 20px; }
+
+  /* ── フォーム ── */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-input {
+    width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 16px; outline: none; appearance: none; -webkit-appearance: none;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; padding: 14px; border-radius: var(--radius);
+    background: var(--accent); color: #fff; border: none;
+    font-size: 16px; font-weight: 600; cursor: pointer; touch-action: manipulation;
+  }
+  .btn-danger {
+    width: 100%; padding: 14px; border-radius: var(--radius);
+    background: var(--red); color: #fff; border: none;
+    font-size: 16px; font-weight: 600; cursor: pointer; touch-action: manipulation;
+    margin-top: 8px;
+  }
+  .btn-secondary {
+    width: 100%; padding: 14px; border-radius: var(--radius);
+    background: var(--surface2); color: var(--text); border: none;
+    font-size: 16px; font-weight: 600; cursor: pointer; touch-action: manipulation;
+    margin-top: 8px;
+  }
+
+  /* ── 詳細モーダル ── */
+  .detail-modal .modal { max-height: 96vh; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .stat-card { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .stat-value { font-size: 18px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .chart-wrap { background: var(--surface2); border-radius: var(--radius); padding: 12px; margin-bottom: 16px; height: 200px; position: relative; }
+  .history-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; }
+  .history-row { background: var(--surface); padding: 11px 14px; display: flex; justify-content: space-between; align-items: center; }
+  .history-date { font-size: 14px; color: var(--text2); }
+  .history-price { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .history-del { background: none; border: none; color: var(--red); font-size: 18px; cursor: pointer; touch-action: manipulation; padding: 0 0 0 12px; }
+
+  /* ── 価格入力モーダル ── */
+  .price-input-grid { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .price-input-row { background: var(--surface); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .price-input-name { flex: 1; font-size: 14px; font-weight: 600; }
+  .price-input-field {
+    width: 110px; padding: 8px 10px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 15px; text-align: right; outline: none; -webkit-appearance: none;
+  }
+  .price-input-field:focus { border-color: var(--accent); }
+
+  /* ── 管理モーダル ── */
+  .manage-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; }
+  .manage-row { background: var(--surface); padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .manage-handle { font-size: 18px; color: var(--text3); cursor: grab; touch-action: none; }
+  .manage-name { flex: 1; font-size: 15px; font-weight: 600; }
+  .manage-del { background: none; border: none; color: var(--red); font-size: 20px; cursor: pointer; touch-action: manipulation; padding: 0 2px; }
+  .manage-move { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; touch-action: manipulation; padding: 0 3px; line-height: 1; }
+  .manage-move:active { color: var(--accent); }
+
+  /* ── フローティングボタン ── */
+  .fab-area {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom) + 16px); right: 16px;
+    display: flex; flex-direction: column; gap: 10px; align-items: flex-end; z-index: 90;
+  }
+  .fab {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--accent); color: #fff; border: none;
+    font-size: 24px; cursor: pointer; touch-action: manipulation;
+    box-shadow: 0 4px 16px rgba(0,113,227,.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fab-label { background: var(--surface); border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); }
+
+  /* ─── トースト ─── */
+  .toast {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom) + 90px); left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(50,50,52,.95); color: #fff; border-radius: 20px;
+    padding: 10px 20px; font-size: 14px; font-weight: 600;
+    opacity: 0; transition: opacity .25s, transform .25s; z-index: 999; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <h1>🃏 ポケカ買取メモ</h1>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnAddPrice" title="価格入力" style="touch-action:manipulation">＋</button>
+      <button class="icon-btn" id="btnManage" title="管理" style="touch-action:manipulation">⚙︎</button>
+    </div>
+  </div>
+  <div style="padding:0 16px 10px">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="box" style="touch-action:manipulation">📦 BOX</button>
+      <button class="tab-btn" data-tab="pack" style="touch-action:manipulation">🎴 パック</button>
+    </div>
+  </div>
+</div>
+
+<div class="content" id="mainContent"></div>
+
+<div class="fab-area">
+  <button class="fab" id="fabAddItem" title="追加">＋</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── 価格入力モーダル ── -->
+<div class="modal-overlay" id="modalPrice">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">価格入力</span>
+      <button class="modal-close" data-close="modalPrice" style="touch-action:manipulation">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">日付</label>
+        <input class="form-input" type="date" id="priceDate">
+      </div>
+      <div id="priceInputRows" class="price-input-grid"></div>
+      <div style="margin-top:16px">
+        <button class="btn-primary" id="btnSavePrices" style="touch-action:manipulation">保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── アイテム追加モーダル ── -->
+<div class="modal-overlay" id="modalAddItem">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="addItemTitle">BOXを追加</span>
+      <button class="modal-close" data-close="modalAddItem" style="touch-action:manipulation">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">名前</label>
+        <input class="form-input" type="text" id="addItemName" placeholder="例：拡張パック スカーレット">
+      </div>
+      <button class="btn-primary" id="btnSaveItem" style="touch-action:manipulation">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 詳細モーダル ── -->
+<div class="modal-overlay detail-modal" id="modalDetail">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="detailTitle"></span>
+      <button class="modal-close" data-close="modalDetail" style="touch-action:manipulation">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- ── 管理モーダル ── -->
+<div class="modal-overlay" id="modalManage">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="manageTitle">BOX 管理</span>
+      <button class="modal-close" data-close="modalManage" style="touch-action:manipulation">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-header" style="padding-top:0">
+        <span class="section-title">並び替え・削除</span>
+      </div>
+      <div id="manageList" class="manage-list"></div>
+      <div id="deleteConfirmArea" style="display:none;margin-top:14px;background:var(--surface2);border-radius:var(--radius);padding:14px;">
+        <div id="deleteConfirmName" style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text)"></div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="confirmDelete()" style="flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;touch-action:manipulation;">削除する</button>
+          <button onclick="cancelDelete()" style="flex:1;padding:11px;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:15px;font-weight:600;touch-action:manipulation;">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── ストレージ ──
+const STORAGE_KEY = 'pokeca_price_tracker_v1';
+let state = { box: [], pack: [] }; // { name, prices: [{date, value}] }
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+// ── 現在タブ ──
+let currentTab = 'box';
+
+// ── ユーティリティ ──
+function fmt(n) {
+  if (n == null || n === '') return '–';
+  return Number(n).toLocaleString('ja-JP') + '円';
+}
+function today() {
+  const d = new Date(); return d.toISOString().slice(0,10);
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── 最新・最高・前回比 ──
+function getStats(item) {
+  const prices = [...item.prices].sort((a,b) => a.date.localeCompare(b.date));
+  if (!prices.length) return { latest: null, high: null, low: null, diff: null, diffSign: 0 };
+  const latest = prices[prices.length-1].value;
+  const high = Math.max(...prices.map(p=>p.value));
+  const low = Math.min(...prices.map(p=>p.value));
+  const prev = prices.length >= 2 ? prices[prices.length-2].value : null;
+  const diff = prev != null ? latest - prev : null;
+  return { latest, high, low, diff, diffSign: diff == null ? 0 : (diff > 0 ? 1 : diff < 0 ? -1 : 0) };
+}
+
+// ── メイン描画 ──
+function renderMain() {
+  const items = state[currentTab];
+  const el = document.getElementById('mainContent');
+  if (!items.length) {
+    el.innerHTML = `<div class="empty">
+      <div class="empty-icon">${currentTab==='box'?'📦':'🎴'}</div>
+      <div class="empty-text">${currentTab==='box'?'BOX':'パック'}がありません</div>
+      <div class="empty-sub">右下の＋ボタンで追加してください</div>
+    </div>`;
+    return;
+  }
+
+  let html = `<div class="section-header"><span class="section-title">一覧</span></div>
+  <div class="card-list">`;
+  items.forEach((item, idx) => {
+    const st = getStats(item);
+    let diffHtml = '';
+    if (st.diff != null) {
+      const cls = st.diffSign > 0 ? 'diff-up' : st.diffSign < 0 ? 'diff-down' : 'diff-flat';
+      const arrow = st.diffSign > 0 ? '▲' : st.diffSign < 0 ? '▼' : '─';
+      diffHtml = `<div class="price-diff ${cls}">${arrow} ${Math.abs(st.diff).toLocaleString()}円</div>`;
+    } else if (st.latest != null) {
+      diffHtml = `<div class="price-diff diff-flat">初回記録</div>`;
+    }
+    const icon = currentTab === 'box' ? '📦' : '🎴';
+    const latestStr = st.latest != null ? st.latest.toLocaleString()+'円' : '未記録';
+    const highStr = st.high != null ? '最高 '+st.high.toLocaleString()+'円' : '';
+    html += `<div class="card-row" data-idx="${idx}">
+      <div class="card-row-icon">${icon}</div>
+      <div class="card-row-body">
+        <div class="card-row-name">${escHtml(item.name)}</div>
+        <div class="card-row-sub">${highStr || '記録なし'}</div>
+      </div>
+      <div class="card-row-right">
+        <div class="price-main">${latestStr}</div>
+        ${diffHtml}
+      </div>
+      <span class="chevron">›</span>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+
+  el.querySelectorAll('.card-row').forEach(row => {
+    row.addEventListener('click', () => openDetail(+row.dataset.idx));
+  });
+}
+
+// ── タブ切替 ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    renderMain();
+    document.getElementById('manageTitle').textContent = (currentTab==='box'?'BOX':'パック') + ' 管理';
+  }, { passive: true });
+});
+
+// ── モーダル開閉 ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close), { passive: true });
+});
+document.querySelectorAll('.modal-overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) closeModal(ov.id); }, { passive: true });
+});
+
+// ── 価格入力モーダル ──
+document.getElementById('btnAddPrice').addEventListener('click', () => {
+  document.getElementById('priceDate').value = today();
+  buildPriceInputRows();
+  openModal('modalPrice');
+}, { passive: true });
+
+function buildPriceInputRows() {
+  const items = state[currentTab];
+  const container = document.getElementById('priceInputRows');
+  if (!items.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">まず'+( currentTab==='box'?'BOX':'パック')+'を追加してください</div>';
+    return;
+  }
+  container.innerHTML = items.map((item, i) =>
+    `<div class="price-input-row">
+      <span class="price-input-name">${escHtml(item.name)}</span>
+      <input class="price-input-field" type="number" inputmode="numeric" pattern="[0-9]*"
+        placeholder="0" data-idx="${i}" id="pi_${i}">
+    </div>`
+  ).join('');
+}
+
+document.getElementById('btnSavePrices').addEventListener('click', () => {
+  const date = document.getElementById('priceDate').value;
+  if (!date) { showToast('日付を入力してください'); return; }
+  const items = state[currentTab];
+  let saved = 0;
+  items.forEach((item, i) => {
+    const el = document.getElementById('pi_'+i);
+    if (!el) return;
+    const val = el.value.trim();
+    if (val === '' || isNaN(+val)) return;
+    // 同日付があれば上書き
+    const idx = item.prices.findIndex(p => p.date === date);
+    if (idx >= 0) item.prices[idx].value = +val;
+    else item.prices.push({ date, value: +val });
+    saved++;
+  });
+  if (!saved) { showToast('価格を入力してください'); return; }
+  save(); renderMain(); closeModal('modalPrice');
+  showToast('保存しました ✓');
+}, { passive: true });
+
+// ── アイテム追加 ──
+document.getElementById('fabAddItem').addEventListener('click', () => {
+  document.getElementById('addItemTitle').textContent = (currentTab==='box'?'BOX':'パック') + 'を追加';
+  document.getElementById('addItemName').value = '';
+  openModal('modalAddItem');
+}, { passive: true });
+
+document.getElementById('btnSaveItem').addEventListener('click', () => {
+  const name = document.getElementById('addItemName').value.trim();
+  if (!name) { showToast('名前を入力してください'); return; }
+  state[currentTab].unshift({ name, prices: [] });
+  save(); renderMain(); closeModal('modalAddItem');
+  showToast('追加しました ✓');
+}, { passive: true });
+
+// ── 詳細モーダル ──
+let detailChart = null;
+function openDetail(idx) {
+  const item = state[currentTab][idx];
+  if (!item) return;
+  document.getElementById('detailTitle').textContent = item.name;
+  renderDetail(item, idx);
+  openModal('modalDetail');
+}
+
+function renderDetail(item, idx) {
+  const st = getStats(item);
+  const prices = [...item.prices].sort((a,b) => a.date.localeCompare(b.date));
+  const body = document.getElementById('detailBody');
+
+  let diffBadge = '';
+  if (st.diff != null) {
+    const cls = st.diffSign > 0 ? 'diff-up' : st.diffSign < 0 ? 'diff-down' : 'diff-flat';
+    const arrow = st.diffSign > 0 ? '▲' : st.diffSign < 0 ? '▼' : '─';
+    diffBadge = `<span class="price-diff ${cls}" style="font-size:13px">${arrow} ${Math.abs(st.diff).toLocaleString()}円（前回比）</span>`;
+  }
+
+  body.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">最新</div>
+        <div class="stat-value" style="color:var(--accent)">${st.latest!=null?st.latest.toLocaleString():'-'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">最高</div>
+        <div class="stat-value" style="color:var(--green)">${st.high!=null?st.high.toLocaleString():'-'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">最安</div>
+        <div class="stat-value" style="color:var(--red)">${st.low!=null?st.low.toLocaleString():'-'}</div>
+      </div>
+    </div>
+    ${diffBadge ? `<div style="margin-bottom:12px;text-align:center">${diffBadge}</div>` : ''}
+    <div class="chart-wrap">
+      <canvas id="detailChart"></canvas>
+    </div>
+    <div class="section-header" style="padding-top:0">
+      <span class="section-title">履歴</span>
+    </div>
+    <div class="history-list" id="historyList">
+      ${prices.length ? prices.slice().reverse().map(p =>
+        `<div class="history-row">
+          <span class="history-date">${p.date}</span>
+          <span class="history-price">${p.value.toLocaleString()}円</span>
+          <button class="history-del" data-date="${p.date}" data-idx="${idx}" style="touch-action:manipulation">🗑</button>
+        </div>`
+      ).join('') : '<div style="padding:20px;text-align:center;color:var(--text2)">履歴がありません</div>'}
+    </div>
+  `;
+
+  // グラフ
+  if (detailChart) { detailChart.destroy(); detailChart = null; }
+  if (prices.length) {
+    const ctx = document.getElementById('detailChart').getContext('2d');
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    detailChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: prices.map(p => p.date.slice(5)), // MM-DD
+        datasets: [{
+          data: prices.map(p => p.value),
+          borderColor: '#0071e3',
+          backgroundColor: 'rgba(0,113,227,.12)',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#0071e3',
+          pointRadius: prices.length === 1 ? 5 : 3,
+          tension: 0.3,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: isDark?'rgba(255,255,255,.08)':'rgba(0,0,0,.06)' }, ticks: { color: isDark?'#aeaeb2':'#6c6c70', font: { size: 11 } } },
+          y: { grid: { color: isDark?'rgba(255,255,255,.08)':'rgba(0,0,0,.06)' }, ticks: { color: isDark?'#aeaeb2':'#6c6c70', font: { size: 11 }, callback: v => v.toLocaleString() } }
+        }
+      }
+    });
+  }
+
+  // 履歴削除
+  body.querySelectorAll('.history-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const date = btn.dataset.date;
+      const i = +btn.dataset.idx;
+      const it = state[currentTab][i];
+      it.prices = it.prices.filter(p => p.date !== date);
+      save(); renderMain(); renderDetail(it, i);
+    }, { passive: true });
+  });
+}
+
+// ── 管理モーダル ──
+document.getElementById('btnManage').addEventListener('click', () => {
+  renderManageList();
+  openModal('modalManage');
+}, { passive: true });
+
+// 削除確認用
+let pendingDeleteIdx = -1;
+
+function renderManageList() {
+  pendingDeleteIdx = -1;
+  const confirmArea = document.getElementById('deleteConfirmArea');
+  if (confirmArea) confirmArea.style.display = 'none';
+
+  const items = state[currentTab];
+  const list = document.getElementById('manageList');
+  if (!items.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2)">まだ追加されていません</div>';
+    return;
+  }
+  list.innerHTML = items.map((item, i) =>
+    `<div class="manage-row" data-idx="${i}">
+      <span class="manage-name" style="flex:1">${escHtml(item.name)}</span>
+      <button class="manage-move" onclick="moveItem(${i},-1)" style="touch-action:manipulation">↑</button>
+      <button class="manage-move" onclick="moveItem(${i},1)" style="touch-action:manipulation">↓</button>
+      <button class="manage-del" onclick="askDelete(${i})" style="touch-action:manipulation">🗑</button>
+    </div>`
+  ).join('');
+}
+
+function moveItem(idx, dir) {
+  const items = state[currentTab];
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= items.length) return;
+  [items[idx], items[newIdx]] = [items[newIdx], items[idx]];
+  save(); renderMain(); renderManageList();
+}
+
+function askDelete(idx) {
+  pendingDeleteIdx = idx;
+  const name = state[currentTab][idx].name;
+  const area = document.getElementById('deleteConfirmArea');
+  document.getElementById('deleteConfirmName').textContent = '「' + name + '」を削除しますか？（履歴も全て削除）';
+  area.style.display = 'block';
+  area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function confirmDelete() {
+  if (pendingDeleteIdx < 0) return;
+  state[currentTab].splice(pendingDeleteIdx, 1);
+  pendingDeleteIdx = -1;
+  save(); renderMain(); renderManageList();
+  showToast('削除しました');
+}
+
+function cancelDelete() {
+  pendingDeleteIdx = -1;
+  const area = document.getElementById('deleteConfirmArea');
+  if (area) area.style.display = 'none';
+}
+
+// ── XSSエスケープ ──
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── 初期化 ──
+const INITIAL_DATA = {"box": [{"name": "ブラックボルト", "prices": [{"date": "2025-06-30", "value": 7600}, {"date": "2025-07-01", "value": 8200}, {"date": "2025-07-02", "value": 8200}, {"date": "2025-07-03", "value": 8200}, {"date": "2025-07-04", "value": 8200}, {"date": "2025-07-10", "value": 8100}, {"date": "2025-07-11", "value": 8200}, {"date": "2025-07-14", "value": 8200}, {"date": "2025-07-16", "value": 8200}, {"date": "2025-07-18", "value": 8200}, {"date": "2025-07-19", "value": 8200}, {"date": "2025-07-21", "value": 7600}, {"date": "2026-05-14", "value": 26000}]}, {"name": "ホワイトフレア", "prices": [{"date": "2025-06-30", "value": 7400}, {"date": "2025-07-01", "value": 8000}, {"date": "2025-07-02", "value": 7800}, {"date": "2025-07-03", "value": 7800}, {"date": "2025-07-04", "value": 8000}, {"date": "2025-07-10", "value": 8000}, {"date": "2025-07-11", "value": 7900}, {"date": "2025-07-14", "value": 7900}, {"date": "2025-07-16", "value": 7900}, {"date": "2025-07-18", "value": 7900}, {"date": "2025-07-19", "value": 7800}, {"date": "2025-07-21", "value": 7200}, {"date": "2026-05-14", "value": 22000}]}, {"name": "ブラックボルトDX", "prices": [{"date": "2025-06-30", "value": 11100}, {"date": "2025-07-01", "value": 11500}, {"date": "2025-07-02", "value": 11500}, {"date": "2025-07-03", "value": 11500}, {"date": "2025-07-04", "value": 11500}, {"date": "2025-07-10", "value": 11500}, {"date": "2025-07-11", "value": 11500}, {"date": "2025-07-14", "value": 12100}, {"date": "2025-07-16", "value": 12000}, {"date": "2025-07-18", "value": 12000}, {"date": "2025-07-19", "value": 12000}, {"date": "2025-07-21", "value": 11800}, {"date": "2026-05-14", "value": 31000}]}, {"name": "ホワイトフレアDX", "prices": [{"date": "2025-06-30", "value": 10900}, {"date": "2025-07-01", "value": 11100}, {"date": "2025-07-02", "value": 11200}, {"date": "2025-07-03", "value": 11300}, {"date": "2025-07-04", "value": 11500}, {"date": "2025-07-10", "value": 11800}, {"date": "2025-07-11", "value": 11500}, {"date": "2025-07-14", "value": 12000}, {"date": "2025-07-16", "value": 11800}, {"date": "2025-07-18", "value": 12000}, {"date": "2025-07-19", "value": 12000}, {"date": "2025-07-21", "value": 11500}, {"date": "2026-05-14", "value": 27000}]}, {"name": "ロケット団の栄光", "prices": [{"date": "2025-06-30", "value": 8900}, {"date": "2025-07-01", "value": 9500}, {"date": "2025-07-02", "value": 9500}, {"date": "2025-07-03", "value": 9500}, {"date": "2025-07-04", "value": 9500}, {"date": "2025-07-10", "value": 10000}, {"date": "2025-07-11", "value": 10000}, {"date": "2025-07-14", "value": 10000}, {"date": "2025-07-16", "value": 10000}, {"date": "2025-07-18", "value": 10000}, {"date": "2025-07-19", "value": 9800}, {"date": "2025-07-21", "value": 9800}, {"date": "2026-05-14", "value": 30000}]}, {"name": "熱風のアリーナ", "prices": [{"date": "2025-06-30", "value": 7100}, {"date": "2025-07-01", "value": 7300}, {"date": "2025-07-02", "value": 7300}, {"date": "2025-07-03", "value": 7400}, {"date": "2025-07-04", "value": 7500}, {"date": "2025-07-10", "value": 7700}, {"date": "2025-07-11", "value": 7700}, {"date": "2025-07-14", "value": 7900}, {"date": "2025-07-16", "value": 8000}, {"date": "2025-07-18", "value": 8000}, {"date": "2025-07-19", "value": 8000}, {"date": "2025-07-21", "value": 8000}, {"date": "2026-05-14", "value": 22000}]}, {"name": "バトルパートナーズ", "prices": [{"date": "2025-06-30", "value": 6100}, {"date": "2025-07-01", "value": 6400}, {"date": "2025-07-02", "value": 6400}, {"date": "2025-07-03", "value": 6400}, {"date": "2025-07-04", "value": 6400}, {"date": "2025-07-10", "value": 6500}, {"date": "2025-07-11", "value": 6500}, {"date": "2025-07-14", "value": 6500}, {"date": "2025-07-16", "value": 6600}, {"date": "2025-07-18", "value": 6500}, {"date": "2025-07-19", "value": 6500}, {"date": "2025-07-21", "value": 6500}, {"date": "2026-05-14", "value": 10000}]}, {"name": "テラスタルフェスex", "prices": [{"date": "2025-06-30", "value": 8800}, {"date": "2025-07-01", "value": 9000}, {"date": "2025-07-02", "value": 9000}, {"date": "2025-07-03", "value": 9000}, {"date": "2025-07-04", "value": 9000}, {"date": "2025-07-10", "value": 9000}, {"date": "2025-07-11", "value": 9000}, {"date": "2025-07-14", "value": 9000}, {"date": "2025-07-16", "value": 9200}, {"date": "2025-07-18", "value": 9000}, {"date": "2025-07-19", "value": 9000}, {"date": "2025-07-21", "value": 9000}, {"date": "2026-05-14", "value": 22600}]}, {"name": "超電ブレイカー", "prices": [{"date": "2025-06-30", "value": 9000}, {"date": "2025-07-01", "value": 8400}, {"date": "2025-07-02", "value": 8500}, {"date": "2025-07-03", "value": 8700}, {"date": "2025-07-04", "value": 8700}, {"date": "2025-07-10", "value": 9200}, {"date": "2025-07-11", "value": 9200}, {"date": "2025-07-14", "value": 9200}, {"date": "2025-07-16", "value": 9300}, {"date": "2025-07-18", "value": 9300}, {"date": "2025-07-19", "value": 9300}, {"date": "2025-07-21", "value": 9300}, {"date": "2026-05-14", "value": 39000}]}, {"name": "楽園ドラゴーナ", "prices": [{"date": "2025-06-30", "value": 6200}, {"date": "2025-07-01", "value": 6300}, {"date": "2025-07-02", "value": 6300}, {"date": "2025-07-03", "value": 6300}, {"date": "2025-07-04", "value": 6400}, {"date": "2025-07-10", "value": 6700}, {"date": "2025-07-11", "value": 6700}, {"date": "2025-07-14", "value": 6700}, {"date": "2025-07-16", "value": 6900}, {"date": "2025-07-18", "value": 6900}, {"date": "2025-07-19", "value": 6900}, {"date": "2025-07-21", "value": 6900}, {"date": "2026-05-14", "value": 19000}]}, {"name": "ステラミラクル", "prices": [{"date": "2025-06-30", "value": 4800}, {"date": "2025-07-01", "value": 4900}, {"date": "2025-07-02", "value": 4900}, {"date": "2025-07-03", "value": 4900}, {"date": "2025-07-04", "value": 4900}, {"date": "2025-07-10", "value": 5000}, {"date": "2025-07-11", "value": 5000}, {"date": "2025-07-14", "value": 5000}, {"date": "2025-07-16", "value": 5000}, {"date": "2025-07-18", "value": 5000}, {"date": "2025-07-19", "value": 5000}, {"date": "2025-07-21", "value": 5000}, {"date": "2026-05-14", "value": 10500}]}, {"name": "ナイトワンダラー", "prices": [{"date": "2025-06-30", "value": 4600}, {"date": "2025-07-01", "value": 4900}, {"date": "2025-07-02", "value": 4900}, {"date": "2025-07-03", "value": 4900}, {"date": "2025-07-04", "value": 4900}, {"date": "2025-07-10", "value": 5000}, {"date": "2025-07-11", "value": 5000}, {"date": "2025-07-14", "value": 5000}, {"date": "2025-07-16", "value": 5000}, {"date": "2025-07-18", "value": 5000}, {"date": "2025-07-19", "value": 5000}, {"date": "2025-07-21", "value": 5000}, {"date": "2026-05-14", "value": 10500}]}, {"name": "変幻の仮面", "prices": [{"date": "2025-06-30", "value": 6300}, {"date": "2025-07-01", "value": 6500}, {"date": "2025-07-02", "value": 6500}, {"date": "2025-07-03", "value": 6500}, {"date": "2025-07-04", "value": 6500}, {"date": "2025-07-10", "value": 7000}, {"date": "2025-07-11", "value": 7000}, {"date": "2025-07-14", "value": 7000}, {"date": "2025-07-16", "value": 7000}, {"date": "2025-07-18", "value": 7200}, {"date": "2025-07-19", "value": 7200}, {"date": "2025-07-21", "value": 7200}, {"date": "2026-05-14", "value": 12500}]}, {"name": "クリムゾンヘイズ", "prices": [{"date": "2025-06-30", "value": 7100}, {"date": "2025-07-01", "value": 7400}, {"date": "2025-07-02", "value": 7400}, {"date": "2025-07-03", "value": 7400}, {"date": "2025-07-04", "value": 7400}, {"date": "2025-07-10", "value": 7500}, {"date": "2025-07-11", "value": 7500}, {"date": "2025-07-14", "value": 7500}, {"date": "2025-07-16", "value": 7700}, {"date": "2025-07-18", "value": 7600}, {"date": "2025-07-19", "value": 7500}, {"date": "2025-07-21", "value": 7500}, {"date": "2026-05-14", "value": 14500}]}, {"name": "ワイルドフォース", "prices": [{"date": "2025-06-30", "value": 5900}, {"date": "2025-07-01", "value": 6000}, {"date": "2025-07-02", "value": 6000}, {"date": "2025-07-03", "value": 6000}, {"date": "2025-07-04", "value": 6100}, {"date": "2025-07-10", "value": 6200}, {"date": "2025-07-11", "value": 6200}, {"date": "2025-07-14", "value": 6200}, {"date": "2025-07-16", "value": 6300}, {"date": "2025-07-18", "value": 6300}, {"date": "2025-07-19", "value": 6300}, {"date": "2025-07-21", "value": 6200}, {"date": "2026-05-14", "value": 12000}]}, {"name": "サイバージャッジ", "prices": [{"date": "2025-06-30", "value": 5300}, {"date": "2025-07-01", "value": 5300}, {"date": "2025-07-02", "value": 5300}, {"date": "2025-07-03", "value": 5300}, {"date": "2025-07-04", "value": 5400}, {"date": "2025-07-10", "value": 5700}, {"date": "2025-07-11", "value": 5600}, {"date": "2025-07-14", "value": 5600}, {"date": "2025-07-16", "value": 5800}, {"date": "2025-07-18", "value": 5900}, {"date": "2025-07-19", "value": 5900}, {"date": "2025-07-21", "value": 5800}, {"date": "2026-05-14", "value": 10500}]}, {"name": "シャイニートレジャーex", "prices": [{"date": "2025-06-30", "value": 7100}, {"date": "2025-07-01", "value": 7400}, {"date": "2025-07-02", "value": 7300}, {"date": "2025-07-03", "value": 7300}, {"date": "2025-07-04", "value": 7300}, {"date": "2025-07-10", "value": 7300}, {"date": "2025-07-11", "value": 7300}, {"date": "2025-07-14", "value": 7500}, {"date": "2025-07-16", "value": 7500}, {"date": "2025-07-18", "value": 7500}, {"date": "2025-07-19", "value": 7500}, {"date": "2025-07-21", "value": 7500}, {"date": "2026-05-14", "value": 19000}]}, {"name": "古代の咆哮", "prices": [{"date": "2025-06-30", "value": 5400}, {"date": "2025-07-01", "value": 5500}, {"date": "2025-07-02", "value": 5400}, {"date": "2025-07-03", "value": 5400}, {"date": "2025-07-04", "value": 5400}, {"date": "2025-07-10", "value": 5400}, {"date": "2025-07-11", "value": 5400}, {"date": "2025-07-14", "value": 5500}, {"date": "2025-07-16", "value": 5500}, {"date": "2025-07-18", "value": 5700}, {"date": "2025-07-19", "value": 5700}, {"date": "2025-07-21", "value": 5700}, {"date": "2026-05-14", "value": 10300}]}, {"name": "未来の一閃", "prices": [{"date": "2025-06-30", "value": 4900}, {"date": "2025-07-01", "value": 4900}, {"date": "2025-07-02", "value": 4900}, {"date": "2025-07-03", "value": 4900}, {"date": "2025-07-04", "value": 4900}, {"date": "2025-07-10", "value": 5000}, {"date": "2025-07-11", "value": 5000}, {"date": "2025-07-14", "value": 5000}, {"date": "2025-07-16", "value": 5000}, {"date": "2025-07-18", "value": 5100}, {"date": "2025-07-19", "value": 5100}, {"date": "2025-07-21", "value": 5000}, {"date": "2026-05-14", "value": 10000}]}, {"name": "レイジングサーフ", "prices": [{"date": "2025-06-30", "value": 7200}, {"date": "2025-07-01", "value": 7200}, {"date": "2025-07-02", "value": 7300}, {"date": "2025-07-03", "value": 7300}, {"date": "2025-07-04", "value": 7500}, {"date": "2025-07-10", "value": 7500}, {"date": "2025-07-11", "value": 7600}, {"date": "2025-07-14", "value": 7700}, {"date": "2025-07-16", "value": 7700}, {"date": "2025-07-18", "value": 7700}, {"date": "2025-07-19", "value": 7700}, {"date": "2025-07-21", "value": 7700}, {"date": "2026-05-14", "value": 12700}]}, {"name": "黒炎の支配者", "prices": [{"date": "2025-06-30", "value": 9000}, {"date": "2025-07-01", "value": 9000}, {"date": "2025-07-02", "value": 9000}, {"date": "2025-07-03", "value": 9000}, {"date": "2025-07-04", "value": 9000}, {"date": "2025-07-10", "value": 9000}, {"date": "2025-07-11", "value": 9100}, {"date": "2025-07-14", "value": 9100}, {"date": "2025-07-16", "value": 9300}, {"date": "2025-07-18", "value": 9500}, {"date": "2025-07-19", "value": 9500}, {"date": "2025-07-21", "value": 9500}, {"date": "2026-05-14", "value": 22000}]}, {"name": "ポケモンカード151", "prices": [{"date": "2025-06-30", "value": 16000}, {"date": "2025-07-01", "value": 17000}, {"date": "2025-07-02", "value": 17000}, {"date": "2025-07-03", "value": 17000}, {"date": "2025-07-04", "value": 17000}, {"date": "2025-07-10", "value": 17000}, {"date": "2025-07-11", "value": 18000}, {"date": "2025-07-14", "value": 18000}, {"date": "2025-07-16", "value": 18000}, {"date": "2025-07-18", "value": 19000}, {"date": "2025-07-19", "value": 19000}, {"date": "2025-07-21", "value": 19000}, {"date": "2026-05-14", "value": 62000}]}, {"name": "VSTARユニバース", "prices": [{"date": "2025-06-30", "value": 12900}, {"date": "2025-07-01", "value": 13200}, {"date": "2025-07-02", "value": 13200}, {"date": "2025-07-03", "value": 13200}, {"date": "2025-07-04", "value": 13200}, {"date": "2025-07-10", "value": 13200}, {"date": "2025-07-11", "value": 13100}, {"date": "2025-07-14", "value": 13100}, {"date": "2025-07-16", "value": 13200}, {"date": "2025-07-18", "value": 13200}, {"date": "2025-07-19", "value": 13200}, {"date": "2025-07-21", "value": 13200}, {"date": "2026-05-14", "value": 30000}]}, {"name": "クレイバースト", "prices": [{"date": "2025-06-30", "value": 8900}, {"date": "2025-07-01", "value": 9000}, {"date": "2025-07-02", "value": 9000}, {"date": "2025-07-03", "value": 9000}, {"date": "2025-07-04", "value": 9000}, {"date": "2025-07-10", "value": 9000}, {"date": "2025-07-11", "value": 9000}, {"date": "2025-07-14", "value": 9200}, {"date": "2025-07-16", "value": 9200}, {"date": "2025-07-18", "value": 9200}, {"date": "2025-07-19", "value": 9200}, {"date": "2025-07-21", "value": 9200}, {"date": "2026-05-14", "value": 11800}]}, {"name": "スノーハザード", "prices": [{"date": "2025-06-30", "value": 5200}, {"date": "2025-07-01", "value": 5300}, {"date": "2025-07-02", "value": 5300}, {"date": "2025-07-03", "value": 5300}, {"date": "2025-07-04", "value": 5300}, {"date": "2025-07-10", "value": 5500}, {"date": "2025-07-11", "value": 5500}, {"date": "2025-07-14", "value": 5400}, {"date": "2025-07-16", "value": 5300}, {"date": "2025-07-18", "value": 5300}, {"date": "2025-07-19", "value": 5300}, {"date": "2025-07-21", "value": 5300}, {"date": "2026-05-14", "value": 10600}]}, {"name": "トリプレットビート", "prices": [{"date": "2025-06-30", "value": 9000}, {"date": "2025-07-01", "value": 9000}, {"date": "2025-07-02", "value": 9000}, {"date": "2025-07-03", "value": 9000}, {"date": "2025-07-04", "value": 9000}, {"date": "2025-07-10", "value": 9100}, {"date": "2025-07-11", "value": 9100}, {"date": "2025-07-14", "value": 9200}, {"date": "2025-07-16", "value": 9200}, {"date": "2025-07-18", "value": 9200}, {"date": "2025-07-19", "value": 9200}, {"date": "2025-07-21", "value": 9200}, {"date": "2026-05-14", "value": 17000}]}, {"name": "スカーレットex", "prices": [{"date": "2025-06-30", "value": 6400}, {"date": "2025-07-01", "value": 6500}, {"date": "2025-07-02", "value": 6500}, {"date": "2025-07-03", "value": 6500}, {"date": "2025-07-04", "value": 6400}, {"date": "2025-07-10", "value": 6400}, {"date": "2025-07-11", "value": 6400}, {"date": "2025-07-14", "value": 6400}, {"date": "2025-07-16", "value": 6500}, {"date": "2025-07-18", "value": 6500}, {"date": "2025-07-19", "value": 6500}, {"date": "2025-07-21", "value": 6500}, {"date": "2026-05-14", "value": 13000}]}, {"name": "バイオレットex", "prices": [{"date": "2025-06-30", "value": 5300}, {"date": "2025-07-01", "value": 5200}, {"date": "2025-07-02", "value": 5300}, {"date": "2025-07-03", "value": 5300}, {"date": "2025-07-04", "value": 5300}, {"date": "2025-07-10", "value": 5600}, {"date": "2025-07-11", "value": 5500}, {"date": "2025-07-14", "value": 5500}, {"date": "2025-07-16", "value": 5500}, {"date": "2025-07-18", "value": 5600}, {"date": "2025-07-19", "value": 5600}, {"date": "2025-07-21", "value": 5600}, {"date": "2026-05-14", "value": 10500}]}, {"name": "パラダイムトリガー", "prices": [{"date": "2025-06-30", "value": 9700}, {"date": "2025-07-01", "value": 10500}, {"date": "2025-07-02", "value": 10500}, {"date": "2025-07-03", "value": 10500}, {"date": "2025-07-04", "value": 10500}, {"date": "2025-07-10", "value": 10600}, {"date": "2025-07-11", "value": 10500}, {"date": "2025-07-14", "value": 10500}, {"date": "2025-07-16", "value": 10600}, {"date": "2025-07-18", "value": 10600}, {"date": "2025-07-19", "value": 10600}, {"date": "2025-07-21", "value": 10600}, {"date": "2026-05-14", "value": 29000}]}, {"name": "白熱のアルカナ", "prices": [{"date": "2025-06-30", "value": 6100}, {"date": "2025-07-01", "value": 6400}, {"date": "2025-07-02", "value": 6400}, {"date": "2025-07-03", "value": 6400}, {"date": "2025-07-04", "value": 6400}, {"date": "2025-07-10", "value": 6500}, {"date": "2025-07-11", "value": 6500}, {"date": "2025-07-14", "value": 6500}, {"date": "2025-07-16", "value": 6400}, {"date": "2025-07-18", "value": 6400}, {"date": "2025-07-19", "value": 6400}, {"date": "2025-07-21", "value": 6200}, {"date": "2026-05-14", "value": 11600}]}, {"name": "ロストアビス", "prices": [{"date": "2025-06-30", "value": 18000}, {"date": "2025-07-01", "value": 19000}, {"date": "2025-07-02", "value": 19000}, {"date": "2025-07-03", "value": 19000}, {"date": "2025-07-04", "value": 19000}, {"date": "2025-07-10", "value": 19000}, {"date": "2025-07-11", "value": 19000}, {"date": "2025-07-14", "value": 20000}, {"date": "2025-07-16", "value": 20000}, {"date": "2025-07-18", "value": 20000}, {"date": "2025-07-19", "value": 20000}, {"date": "2025-07-21", "value": 20000}, {"date": "2026-05-14", "value": 70000}]}, {"name": "ポケモンGO", "prices": [{"date": "2025-06-30", "value": 6600}, {"date": "2025-07-01", "value": 7200}, {"date": "2025-07-02", "value": 7400}, {"date": "2025-07-03", "value": 7400}, {"date": "2025-07-04", "value": 7400}, {"date": "2025-07-10", "value": 7400}, {"date": "2025-07-11", "value": 7400}, {"date": "2025-07-14", "value": 7700}, {"date": "2025-07-16", "value": 7800}, {"date": "2025-07-18", "value": 7800}, {"date": "2025-07-19", "value": 7800}, {"date": "2025-07-21", "value": 7700}, {"date": "2026-05-14", "value": 37000}]}, {"name": "ダークファンタズマ", "prices": [{"date": "2025-06-30", "value": 7800}, {"date": "2025-07-01", "value": 7700}, {"date": "2025-07-02", "value": 7700}, {"date": "2025-07-03", "value": 7700}, {"date": "2025-07-04", "value": 7700}, {"date": "2025-07-10", "value": 8000}, {"date": "2025-07-11", "value": 8000}, {"date": "2025-07-14", "value": 7700}, {"date": "2025-07-16", "value": 7800}, {"date": "2025-07-18", "value": 7800}, {"date": "2025-07-19", "value": 7800}, {"date": "2025-07-21", "value": 7800}, {"date": "2026-05-14", "value": 34000}]}, {"name": "タイムゲイザー", "prices": [{"date": "2025-06-30", "value": 9400}, {"date": "2025-07-01", "value": 10000}, {"date": "2025-07-02", "value": 10000}, {"date": "2025-07-03", "value": 10000}, {"date": "2025-07-04", "value": 10000}, {"date": "2025-07-10", "value": 10000}, {"date": "2025-07-11", "value": 10000}, {"date": "2025-07-14", "value": 10000}, {"date": "2025-07-16", "value": 10000}, {"date": "2025-07-18", "value": 10000}, {"date": "2025-07-19", "value": 10000}, {"date": "2025-07-21", "value": 10000}, {"date": "2026-05-14", "value": 18000}]}, {"name": "スペースジャグラー", "prices": [{"date": "2025-06-30", "value": 7600}, {"date": "2025-07-01", "value": 8000}, {"date": "2025-07-02", "value": 8000}, {"date": "2025-07-03", "value": 8000}, {"date": "2025-07-04", "value": 8000}, {"date": "2025-07-10", "value": 8000}, {"date": "2025-07-11", "value": 8000}, {"date": "2025-07-14", "value": 8200}, {"date": "2025-07-16", "value": 8200}, {"date": "2025-07-18", "value": 8200}, {"date": "2025-07-19", "value": 8200}, {"date": "2025-07-21", "value": 8200}, {"date": "2026-05-14", "value": 17000}]}, {"name": "バトルリージョン", "prices": [{"date": "2025-06-30", "value": 7800}, {"date": "2025-07-01", "value": 7700}, {"date": "2025-07-02", "value": 7700}, {"date": "2025-07-03", "value": 7700}, {"date": "2025-07-04", "value": 7700}, {"date": "2025-07-10", "value": 7700}, {"date": "2025-07-11", "value": 7700}, {"date": "2025-07-14", "value": 7700}, {"date": "2025-07-16", "value": 8000}, {"date": "2025-07-18", "value": 7800}, {"date": "2025-07-19", "value": 7800}, {"date": "2025-07-21", "value": 7700}, {"date": "2026-05-14", "value": 16000}]}, {"name": "スターバース", "prices": [{"date": "2025-06-30", "value": 11400}, {"date": "2025-07-01", "value": 11500}, {"date": "2025-07-02", "value": 11800}, {"date": "2025-07-03", "value": 11800}, {"date": "2025-07-04", "value": 11800}, {"date": "2025-07-10", "value": 11800}, {"date": "2025-07-11", "value": 11800}, {"date": "2025-07-14", "value": 11500}, {"date": "2025-07-16", "value": 11800}, {"date": "2025-07-18", "value": 11800}, {"date": "2025-07-19", "value": 11800}, {"date": "2025-07-21", "value": 11800}, {"date": "2026-05-14", "value": 26000}]}, {"name": "VMAXクライマックス", "prices": [{"date": "2025-06-30", "value": 15900}, {"date": "2025-07-01", "value": 16200}, {"date": "2025-07-02", "value": 16200}, {"date": "2025-07-03", "value": 16200}, {"date": "2025-07-04", "value": 16200}, {"date": "2025-07-10", "value": 16200}, {"date": "2025-07-11", "value": 16200}, {"date": "2025-07-14", "value": 16200}, {"date": "2025-07-16", "value": 16200}, {"date": "2025-07-18", "value": 16200}, {"date": "2025-07-19", "value": 16200}, {"date": "2025-07-21", "value": 16200}, {"date": "2026-05-14", "value": 37000}]}, {"name": "25thアニコレ", "prices": [{"date": "2025-06-30", "value": 19000}, {"date": "2025-07-01", "value": 20000}, {"date": "2025-07-02", "value": 20000}, {"date": "2025-07-03", "value": 20000}, {"date": "2025-07-04", "value": 20000}, {"date": "2025-07-10", "value": 19000}, {"date": "2025-07-11", "value": 19000}, {"date": "2025-07-14", "value": 20000}, {"date": "2025-07-16", "value": 20000}, {"date": "2025-07-18", "value": 20000}, {"date": "2025-07-19", "value": 20000}, {"date": "2025-07-21", "value": 20000}, {"date": "2026-05-14", "value": 80000}]}, {"name": "フュージョンアーツ", "prices": [{"date": "2025-06-30", "value": 16000}, {"date": "2025-07-01", "value": 17000}, {"date": "2025-07-02", "value": 17000}, {"date": "2025-07-03", "value": 17000}, {"date": "2025-07-04", "value": 17000}, {"date": "2025-07-10", "value": 18000}, {"date": "2025-07-11", "value": 18000}, {"date": "2025-07-14", "value": 18000}, {"date": "2025-07-16", "value": 18000}, {"date": "2025-07-18", "value": 18000}, {"date": "2025-07-19", "value": 18000}, {"date": "2025-07-21", "value": 18000}, {"date": "2026-05-14", "value": 74000}]}, {"name": "イーブイヒーローズ", "prices": [{"date": "2025-06-30", "value": 56000}, {"date": "2025-07-01", "value": 63000}, {"date": "2025-07-02", "value": 63000}, {"date": "2025-07-03", "value": 63000}, {"date": "2025-07-04", "value": 64000}, {"date": "2025-07-10", "value": 64000}, {"date": "2025-07-11", "value": 64000}, {"date": "2025-07-14", "value": 65000}, {"date": "2025-07-16", "value": 65000}, {"date": "2025-07-18", "value": 65000}, {"date": "2025-07-19", "value": 65000}, {"date": "2025-07-21", "value": 65000}, {"date": "2026-05-14", "value": 170000}]}, {"name": "蒼空ストリーム", "prices": [{"date": "2025-06-30", "value": 68000}, {"date": "2025-07-01", "value": 78000}, {"date": "2025-07-02", "value": 78000}, {"date": "2025-07-03", "value": 78000}, {"date": "2025-07-04", "value": 78000}, {"date": "2025-07-10", "value": 78000}, {"date": "2025-07-11", "value": 78000}, {"date": "2025-07-14", "value": 80000}, {"date": "2025-07-16", "value": 80000}, {"date": "2025-07-18", "value": 80000}, {"date": "2025-07-19", "value": 80000}, {"date": "2025-07-21", "value": 80000}, {"date": "2026-05-14", "value": 350000}]}, {"name": "摩天パーフェクト", "prices": [{"date": "2025-06-30", "value": 9900}, {"date": "2025-07-01", "value": 10000}, {"date": "2025-07-02", "value": 9500}, {"date": "2025-07-03", "value": 9500}, {"date": "2025-07-04", "value": 9500}, {"date": "2025-07-10", "value": 9500}, {"date": "2025-07-11", "value": 9500}, {"date": "2025-07-14", "value": 11500}, {"date": "2025-07-16", "value": 11500}, {"date": "2025-07-18", "value": 11500}, {"date": "2025-07-19", "value": 11500}, {"date": "2025-07-21", "value": 11500}, {"date": "2026-05-14", "value": 22700}]}, {"name": "シャイニースターV", "prices": [{"date": "2025-06-30", "value": 11900}, {"date": "2025-07-01", "value": 12300}, {"date": "2025-07-02", "value": 12000}, {"date": "2025-07-03", "value": 12000}, {"date": "2025-07-04", "value": 12000}, {"date": "2025-07-10", "value": 12300}, {"date": "2025-07-11", "value": 12300}, {"date": "2025-07-14", "value": 12500}, {"date": "2025-07-16", "value": 12500}, {"date": "2025-07-18", "value": 12500}, {"date": "2025-07-19", "value": 12500}, {"date": "2025-07-21", "value": 12100}, {"date": "2026-05-14", "value": 21000}]}, {"name": "仰天のボルテッカー", "prices": [{"date": "2025-06-30", "value": 13900}, {"date": "2025-07-01", "value": 15500}, {"date": "2025-07-02", "value": 15500}, {"date": "2025-07-03", "value": 15500}, {"date": "2025-07-04", "value": 15500}, {"date": "2025-07-10", "value": 16000}, {"date": "2025-07-11", "value": 16000}, {"date": "2025-07-14", "value": 16000}, {"date": "2025-07-16", "value": 16000}, {"date": "2025-07-18", "value": 16500}, {"date": "2025-07-19", "value": 16500}, {"date": "2025-07-21", "value": 16500}, {"date": "2026-05-14", "value": 59000}]}, {"name": "漆黒のガイスト", "prices": [{"date": "2025-06-30", "value": 11200}, {"date": "2025-07-01", "value": 12000}, {"date": "2025-07-02", "value": 12000}, {"date": "2025-07-03", "value": 12000}, {"date": "2025-07-04", "value": 12000}, {"date": "2025-07-10", "value": 12500}, {"date": "2025-07-11", "value": 12500}, {"date": "2025-07-14", "value": 12500}, {"date": "2025-07-16", "value": 12500}, {"date": "2025-07-18", "value": 12500}, {"date": "2025-07-19", "value": 12500}, {"date": "2025-07-21", "value": 12500}, {"date": "2026-05-14", "value": 25000}]}, {"name": "白銀のランス", "prices": [{"date": "2025-06-30", "value": 8100}, {"date": "2025-07-01", "value": 8700}, {"date": "2025-07-02", "value": 9000}, {"date": "2025-07-03", "value": 9000}, {"date": "2025-07-04", "value": 9000}, {"date": "2025-07-10", "value": 9200}, {"date": "2025-07-11", "value": 9200}, {"date": "2025-07-14", "value": 9500}, {"date": "2025-07-16", "value": 9500}, {"date": "2025-07-18", "value": 9500}, {"date": "2025-07-19", "value": 9500}, {"date": "2025-07-21", "value": 9500}, {"date": "2026-05-14", "value": 21000}]}, {"name": "双璧のファイター", "prices": [{"date": "2025-06-30", "value": 16000}, {"date": "2025-07-01", "value": 17000}, {"date": "2025-07-02", "value": 17000}, {"date": "2025-07-03", "value": 17000}, {"date": "2025-07-04", "value": 17000}, {"date": "2025-07-10", "value": 17000}, {"date": "2025-07-11", "value": 17000}, {"date": "2025-07-14", "value": 17000}, {"date": "2025-07-16", "value": 17000}, {"date": "2025-07-18", "value": 17000}, {"date": "2025-07-19", "value": 17000}, {"date": "2025-07-21", "value": 17000}, {"date": "2026-05-14", "value": 44000}]}, {"name": "連撃マスター", "prices": [{"date": "2025-06-30", "value": 23000}, {"date": "2025-07-01", "value": 24000}, {"date": "2025-07-02", "value": 24000}, {"date": "2025-07-03", "value": 24000}, {"date": "2025-07-04", "value": 24000}, {"date": "2025-07-10", "value": 24000}, {"date": "2025-07-11", "value": 24000}, {"date": "2025-07-14", "value": 26000}, {"date": "2025-07-16", "value": 26000}, {"date": "2025-07-18", "value": 26000}, {"date": "2025-07-19", "value": 26000}, {"date": "2025-07-21", "value": 26000}, {"date": "2026-05-14", "value": 60000}]}, {"name": "一撃マスター", "prices": [{"date": "2025-06-30", "value": 18000}, {"date": "2025-07-01", "value": 19000}, {"date": "2025-07-02", "value": 19000}, {"date": "2025-07-03", "value": 19000}, {"date": "2025-07-04", "value": 19000}, {"date": "2025-07-10", "value": 19000}, {"date": "2025-07-11", "value": 19000}, {"date": "2025-07-14", "value": 19000}, {"date": "2025-07-16", "value": 19000}, {"date": "2025-07-18", "value": 19000}, {"date": "2025-07-19", "value": 19000}, {"date": "2025-07-21", "value": 19000}, {"date": "2026-05-14", "value": 60000}]}, {"name": "伝説の鼓動", "prices": [{"date": "2025-06-30", "value": 15900}, {"date": "2025-07-01", "value": 16000}, {"date": "2025-07-02", "value": 16000}, {"date": "2025-07-03", "value": 16000}, {"date": "2025-07-04", "value": 16000}, {"date": "2025-07-10", "value": 16000}, {"date": "2025-07-11", "value": 16000}, {"date": "2025-07-14", "value": 16000}, {"date": "2025-07-16", "value": 16000}, {"date": "2025-07-18", "value": 16000}, {"date": "2025-07-19", "value": 16000}, {"date": "2025-07-21", "value": 16000}, {"date": "2026-05-14", "value": 45000}]}, {"name": "ソードV", "prices": [{"date": "2025-06-30", "value": 27000}, {"date": "2025-07-01", "value": 28000}, {"date": "2025-07-02", "value": 28000}, {"date": "2025-07-03", "value": 28000}, {"date": "2025-07-04", "value": 28000}, {"date": "2025-07-10", "value": 28000}, {"date": "2025-07-11", "value": 28000}, {"date": "2025-07-14", "value": 28000}, {"date": "2025-07-16", "value": 28000}, {"date": "2025-07-18", "value": 28000}, {"date": "2025-07-19", "value": 28000}, {"date": "2025-07-21", "value": 28000}, {"date": "2026-05-14", "value": 65000}]}, {"name": "シールドV", "prices": [{"date": "2025-06-30", "value": 30000}, {"date": "2025-07-01", "value": 31000}, {"date": "2025-07-02", "value": 31000}, {"date": "2025-07-03", "value": 31000}, {"date": "2025-07-04", "value": 31000}, {"date": "2025-07-10", "value": 31000}, {"date": "2025-07-11", "value": 31000}, {"date": "2025-07-14", "value": 31000}, {"date": "2025-07-16", "value": 31000}, {"date": "2025-07-18", "value": 31000}, {"date": "2025-07-19", "value": 31000}, {"date": "2025-07-21", "value": 31000}, {"date": "2026-05-14", "value": 80000}]}, {"name": "タッグオールスターズ", "prices": [{"date": "2025-06-30", "value": 83000}, {"date": "2025-07-01", "value": 86000}, {"date": "2025-07-02", "value": 86000}, {"date": "2025-07-03", "value": 86000}, {"date": "2025-07-04", "value": 86000}, {"date": "2025-07-10", "value": 88000}, {"date": "2025-07-11", "value": 88000}, {"date": "2025-07-14", "value": 90000}, {"date": "2025-07-16", "value": 90000}, {"date": "2025-07-18", "value": 90000}, {"date": "2025-07-19", "value": 90000}, {"date": "2025-07-21", "value": 90000}, {"date": "2026-05-14", "value": 176000}]}, {"name": "オルタージェネシス", "prices": [{"date": "2025-06-30", "value": 25000}, {"date": "2025-07-01", "value": 27000}, {"date": "2025-07-02", "value": 27000}, {"date": "2025-07-03", "value": 27000}, {"date": "2025-07-04", "value": 26000}, {"date": "2025-07-10", "value": 26000}, {"date": "2025-07-11", "value": 26000}, {"date": "2025-07-14", "value": 26000}, {"date": "2025-07-16", "value": 26000}, {"date": "2025-07-18", "value": 26000}, {"date": "2025-07-19", "value": 26000}, {"date": "2025-07-21", "value": 26000}, {"date": "2026-05-14", "value": 57000}]}, {"name": "ドリームリーグ", "prices": [{"date": "2025-06-30", "value": 80000}, {"date": "2025-07-01", "value": 80000}, {"date": "2025-07-02", "value": 80000}, {"date": "2025-07-03", "value": 80000}, {"date": "2025-07-04", "value": 80000}, {"date": "2025-07-10", "value": 84000}, {"date": "2025-07-11", "value": 84000}, {"date": "2025-07-14", "value": 86000}, {"date": "2025-07-16", "value": 86000}, {"date": "2025-07-18", "value": 86000}, {"date": "2025-07-19", "value": 86000}, {"date": "2025-07-21", "value": 86000}, {"date": "2026-05-14", "value": 165000}]}, {"name": "リミックスバウト", "prices": [{"date": "2025-06-30", "value": 36000}, {"date": "2025-07-01", "value": 37000}, {"date": "2025-07-02", "value": 37000}, {"date": "2025-07-03", "value": 37000}, {"date": "2025-07-04", "value": 37000}, {"date": "2025-07-10", "value": 37000}, {"date": "2025-07-11", "value": 37000}, {"date": "2025-07-14", "value": 38000}, {"date": "2025-07-16", "value": 38000}, {"date": "2025-07-18", "value": 38000}, {"date": "2025-07-19", "value": 38000}, {"date": "2025-07-21", "value": 38000}, {"date": "2026-05-14", "value": 150000}]}, {"name": "ミラクルツイン", "prices": [{"date": "2025-06-30", "value": 49000}, {"date": "2025-07-01", "value": 50000}, {"date": "2025-07-02", "value": 50000}, {"date": "2025-07-03", "value": 50000}, {"date": "2025-07-04", "value": 50000}, {"date": "2025-07-10", "value": 51000}, {"date": "2025-07-11", "value": 51000}, {"date": "2025-07-14", "value": 57000}, {"date": "2025-07-16", "value": 57000}, {"date": "2025-07-18", "value": 57000}, {"date": "2025-07-19", "value": 57000}, {"date": "2025-07-21", "value": 57000}, {"date": "2026-05-14", "value": 200000}]}, {"name": "スカイレジェンド", "prices": [{"date": "2025-06-30", "value": 44000}, {"date": "2025-07-01", "value": 46000}, {"date": "2025-07-02", "value": 46000}, {"date": "2025-07-03", "value": 46000}, {"date": "2025-07-04", "value": 46000}, {"date": "2025-07-10", "value": 46000}, {"date": "2025-07-11", "value": 46000}, {"date": "2025-07-14", "value": 50000}, {"date": "2025-07-16", "value": 50000}, {"date": "2025-07-18", "value": 50000}, {"date": "2025-07-19", "value": 50000}, {"date": "2025-07-21", "value": 50000}, {"date": "2026-05-14", "value": 112000}]}, {"name": "ジージーエンド", "prices": [{"date": "2025-06-30", "value": 25000}, {"date": "2025-07-01", "value": 26000}, {"date": "2025-07-02", "value": 26000}, {"date": "2025-07-03", "value": 26000}, {"date": "2025-07-04", "value": 26000}, {"date": "2025-07-10", "value": 26000}, {"date": "2025-07-11", "value": 26000}, {"date": "2025-07-14", "value": 26000}, {"date": "2025-07-16", "value": 26000}, {"date": "2025-07-18", "value": 26000}, {"date": "2025-07-19", "value": 26000}, {"date": "2025-07-21", "value": 26000}, {"date": "2026-05-14", "value": 80000}]}, {"name": "ダブルブレイズ", "prices": [{"date": "2025-06-30", "value": 36000}, {"date": "2025-07-01", "value": 37000}, {"date": "2025-07-02", "value": 37000}, {"date": "2025-07-03", "value": 37000}, {"date": "2025-07-04", "value": 38000}, {"date": "2025-07-10", "value": 38000}, {"date": "2025-07-11", "value": 38000}, {"date": "2025-07-14", "value": 42000}, {"date": "2025-07-16", "value": 42000}, {"date": "2025-07-18", "value": 42000}, {"date": "2025-07-19", "value": 42000}, {"date": "2025-07-21", "value": 42000}, {"date": "2026-05-14", "value": 110000}]}, {"name": "フルメタルウォール", "prices": [{"date": "2025-06-30", "value": 17000}, {"date": "2025-07-01", "value": 18000}, {"date": "2025-07-02", "value": 19000}, {"date": "2025-07-03", "value": 19000}, {"date": "2025-07-04", "value": 19000}, {"date": "2025-07-10", "value": 20000}, {"date": "2025-07-11", "value": 20000}, {"date": "2025-07-14", "value": 20000}, {"date": "2025-07-16", "value": 20000}, {"date": "2025-07-18", "value": 20000}, {"date": "2025-07-19", "value": 20000}, {"date": "2025-07-21", "value": 20000}, {"date": "2026-05-14", "value": 52000}]}, {"name": "ナイトユニゾン", "prices": [{"date": "2025-06-30", "value": 30000}, {"date": "2025-07-01", "value": 31000}, {"date": "2025-07-02", "value": 32000}, {"date": "2025-07-03", "value": 32000}, {"date": "2025-07-04", "value": 32000}, {"date": "2025-07-10", "value": 32000}, {"date": "2025-07-11", "value": 32000}, {"date": "2025-07-14", "value": 32000}, {"date": "2025-07-16", "value": 32000}, {"date": "2025-07-18", "value": 32000}, {"date": "2025-07-19", "value": 32000}, {"date": "2025-07-21", "value": 32000}, {"date": "2026-05-14", "value": 85000}]}, {"name": "タッグボルト", "prices": [{"date": "2025-06-30", "value": 105000}, {"date": "2025-07-01", "value": 118000}, {"date": "2025-07-02", "value": 120000}, {"date": "2025-07-03", "value": 120000}, {"date": "2025-07-04", "value": 120000}, {"date": "2025-07-10", "value": 140000}, {"date": "2025-07-11", "value": 140000}, {"date": "2025-07-14", "value": 141000}, {"date": "2025-07-16", "value": 141000}, {"date": "2025-07-18", "value": 141000}, {"date": "2025-07-19", "value": 141000}, {"date": "2025-07-21", "value": 141000}, {"date": "2026-05-14", "value": 390000}]}, {"name": "GXウルトラシャイニー", "prices": [{"date": "2025-06-30", "value": 95000}, {"date": "2025-07-01", "value": 93000}, {"date": "2025-07-02", "value": 93000}, {"date": "2025-07-03", "value": 93000}, {"date": "2025-07-04", "value": 93000}, {"date": "2025-07-10", "value": 93000}, {"date": "2025-07-11", "value": 93000}, {"date": "2025-07-14", "value": 96000}, {"date": "2025-07-16", "value": 96000}, {"date": "2025-07-18", "value": 96000}, {"date": "2025-07-19", "value": 96000}, {"date": "2025-07-21", "value": 96000}, {"date": "2026-05-14", "value": 165000}]}, {"name": "ダークオーダー", "prices": [{"date": "2025-06-30", "value": 16000}, {"date": "2025-07-01", "value": 17000}, {"date": "2025-07-02", "value": 17000}, {"date": "2025-07-03", "value": 17000}, {"date": "2025-07-04", "value": 17000}, {"date": "2025-07-10", "value": 17000}, {"date": "2025-07-11", "value": 17000}, {"date": "2025-07-14", "value": 17000}, {"date": "2025-07-16", "value": 17000}, {"date": "2025-07-18", "value": 17000}, {"date": "2025-07-19", "value": 17000}, {"date": "2025-07-21", "value": 17000}, {"date": "2026-05-14", "value": 45000}]}, {"name": "超爆インパクト", "prices": [{"date": "2025-06-30", "value": 33000}, {"date": "2025-07-01", "value": 34000}, {"date": "2025-07-02", "value": 34000}, {"date": "2025-07-03", "value": 34000}, {"date": "2025-07-04", "value": 34000}, {"date": "2025-07-10", "value": 34000}, {"date": "2025-07-11", "value": 34000}, {"date": "2025-07-14", "value": 34000}, {"date": "2025-07-16", "value": 34000}, {"date": "2025-07-18", "value": 34000}, {"date": "2025-07-19", "value": 34000}, {"date": "2025-07-21", "value": 34000}, {"date": "2026-05-14", "value": 110000}]}, {"name": "フェアリーライズ", "prices": [{"date": "2025-06-30", "value": 22000}, {"date": "2025-07-01", "value": 22000}, {"date": "2025-07-02", "value": 22000}, {"date": "2025-07-03", "value": 22000}, {"date": "2025-07-04", "value": 22000}, {"date": "2025-07-10", "value": 24000}, {"date": "2025-07-11", "value": 24000}, {"date": "2025-07-14", "value": 24000}, {"date": "2025-07-16", "value": 25000}, {"date": "2025-07-18", "value": 25000}, {"date": "2025-07-19", "value": 25000}, {"date": "2025-07-21", "value": 25000}, {"date": "2026-05-14", "value": 58000}]}, {"name": "迅雷スパーク", "prices": [{"date": "2025-06-30", "value": 20000}, {"date": "2025-07-01", "value": 21000}, {"date": "2025-07-02", "value": 21000}, {"date": "2025-07-03", "value": 21000}, {"date": "2025-07-04", "value": 21000}, {"date": "2025-07-10", "value": 21000}, {"date": "2025-07-11", "value": 21000}, {"date": "2025-07-14", "value": 21000}, {"date": "2025-07-16", "value": 21000}, {"date": "2025-07-18", "value": 21000}, {"date": "2025-07-19", "value": 21000}, {"date": "2025-07-21", "value": 21000}, {"date": "2026-05-14", "value": 80000}]}, {"name": "禁断の光", "prices": [{"date": "2025-06-30", "value": 30000}, {"date": "2025-07-01", "value": 31000}, {"date": "2025-07-02", "value": 31000}, {"date": "2025-07-03", "value": 31000}, {"date": "2025-07-04", "value": 31000}, {"date": "2025-07-10", "value": 31000}, {"date": "2025-07-11", "value": 31000}, {"date": "2025-07-14", "value": 31000}, {"date": "2025-07-16", "value": 31000}, {"date": "2025-07-18", "value": 31000}, {"date": "2025-07-19", "value": 31000}, {"date": "2025-07-21", "value": 31000}, {"date": "2026-05-14", "value": 75000}]}, {"name": "ムゲンゾーン", "prices": [{"date": "2025-06-30", "value": 17000}, {"date": "2025-07-01", "value": 18000}, {"date": "2025-07-02", "value": 18000}, {"date": "2025-07-03", "value": 18000}, {"date": "2025-07-04", "value": 18000}, {"date": "2025-07-10", "value": 18000}, {"date": "2025-07-11", "value": 18000}, {"date": "2025-07-14", "value": 18000}, {"date": "2025-07-16", "value": 18000}, {"date": "2025-07-18", "value": 18000}, {"date": "2025-07-19", "value": 18000}, {"date": "2025-07-21", "value": 18000}, {"date": "2026-05-14", "value": 70000}]}, {"name": "爆炎ウォーカー", "prices": [{"date": "2025-06-30", "value": 14900}, {"date": "2025-07-01", "value": 15000}, {"date": "2025-07-02", "value": 15000}, {"date": "2025-07-03", "value": 15000}, {"date": "2025-07-04", "value": 15000}, {"date": "2025-07-10", "value": 15000}, {"date": "2025-07-11", "value": 15000}, {"date": "2025-07-14", "value": 15000}, {"date": "2025-07-16", "value": 15000}, {"date": "2025-07-18", "value": 15000}, {"date": "2025-07-19", "value": 15000}, {"date": "2025-07-21", "value": 15000}, {"date": "2026-05-14", "value": 48000}]}, {"name": "反逆クラッシュ", "prices": [{"date": "2025-06-30", "value": 18000}, {"date": "2025-07-01", "value": 19000}, {"date": "2025-07-02", "value": 19000}, {"date": "2025-07-03", "value": 19000}, {"date": "2025-07-04", "value": 19000}, {"date": "2025-07-10", "value": 19000}, {"date": "2025-07-11", "value": 19000}, {"date": "2025-07-14", "value": 19000}, {"date": "2025-07-16", "value": 19000}, {"date": "2025-07-18", "value": 19000}, {"date": "2025-07-19", "value": 19000}, {"date": "2025-07-21", "value": 19000}, {"date": "2026-05-14", "value": 60000}]}, {"name": "VMAXライジング", "prices": [{"date": "2025-06-30", "value": 46000}, {"date": "2025-07-01", "value": 47000}, {"date": "2025-07-02", "value": 47000}, {"date": "2025-07-03", "value": 47000}, {"date": "2025-07-04", "value": 47000}, {"date": "2025-07-10", "value": 47000}, {"date": "2025-07-11", "value": 47000}, {"date": "2025-07-14", "value": 47000}, {"date": "2025-07-16", "value": 47000}, {"date": "2025-07-18", "value": 47000}, {"date": "2025-07-19", "value": 47000}, {"date": "2025-07-21", "value": 47000}, {"date": "2026-05-14", "value": 125000}]}, {"name": "ニンジャスピナー", "prices": [{"date": "2026-05-14", "value": 11500}]}, {"name": "ムニキスゼロ", "prices": [{"date": "2026-05-14", "value": 8000}]}, {"name": "MEGAドリームex", "prices": [{"date": "2026-05-14", "value": 15000}]}, {"name": "インフェルノX", "prices": [{"date": "2026-05-14", "value": 26000}]}, {"name": "メガブレイブ", "prices": [{"date": "2026-05-14", "value": 12000}]}, {"name": "メガシンフォニア", "prices": [{"date": "2026-05-14", "value": 10500}]}, {"name": "チャンピオンロード", "prices": [{"date": "2026-05-14", "value": 85000}]}, {"name": "ドラゴンストーム", "prices": [{"date": "2026-05-14", "value": 105000}]}, {"name": "ウルトラフォース", "prices": [{"date": "2026-05-14", "value": 70000}]}, {"name": "ウルトラムーン", "prices": [{"date": "2026-05-14", "value": 150000}]}], "pack": [{"name": "ブラックボルト", "prices": [{"date": "2025-07-02", "value": 150}, {"date": "2025-07-09", "value": 140}, {"date": "2025-07-16", "value": 140}, {"date": "2026-04-28", "value": 380}]}, {"name": "ホワイトフレア", "prices": [{"date": "2025-07-02", "value": 150}, {"date": "2025-07-09", "value": 140}, {"date": "2025-07-16", "value": 140}, {"date": "2026-05-13", "value": 370}]}, {"name": "ブラックボルトDX", "prices": [{"date": "2025-07-02", "value": 1270}, {"date": "2025-07-09", "value": 1290}, {"date": "2025-07-16", "value": 1340}, {"date": "2026-05-07", "value": 2600}]}, {"name": "ホワイトフレアDX", "prices": [{"date": "2025-07-02", "value": 1300}, {"date": "2025-07-09", "value": 1220}, {"date": "2025-07-16", "value": 1340}, {"date": "2026-04-28", "value": 2150}]}, {"name": "ロケット団の栄光", "prices": [{"date": "2025-07-02", "value": 130}, {"date": "2025-07-09", "value": 140}, {"date": "2025-07-16", "value": 120}, {"date": "2026-05-13", "value": 270}]}, {"name": "熱風のアリーナ", "prices": [{"date": "2025-07-02", "value": 110}, {"date": "2025-07-09", "value": 110}, {"date": "2025-07-16", "value": 130}, {"date": "2026-05-13", "value": 260}]}, {"name": "バトルパートナーズ", "prices": [{"date": "2025-07-02", "value": 90}, {"date": "2025-07-09", "value": 90}, {"date": "2025-07-16", "value": 100}, {"date": "2026-05-07", "value": 140}]}, {"name": "テラスタルフェスex", "prices": [{"date": "2025-07-02", "value": 290}, {"date": "2025-07-09", "value": 300}, {"date": "2025-07-16", "value": 340}, {"date": "2026-05-13", "value": 650}]}, {"name": "超電ブレイカー", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 110}, {"date": "2025-07-16", "value": 120}, {"date": "2026-05-07", "value": 370}]}, {"name": "楽園ドラゴーナ", "prices": [{"date": "2025-07-02", "value": 110}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 130}, {"date": "2026-05-07", "value": 230}]}, {"name": "ステラミラクル", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 120}, {"date": "2025-12-16", "value": 130}]}, {"name": "ナイトワンダラー", "prices": [{"date": "2025-07-02", "value": 130}, {"date": "2025-07-09", "value": 130}, {"date": "2025-07-16", "value": 130}, {"date": "2025-12-16", "value": 140}]}, {"name": "変幻の仮面", "prices": [{"date": "2025-07-02", "value": 100}, {"date": "2025-07-09", "value": 110}, {"date": "2025-07-16", "value": 110}, {"date": "2026-05-07", "value": 180}]}, {"name": "クリムゾンヘイズ", "prices": [{"date": "2025-07-02", "value": 140}, {"date": "2025-07-09", "value": 140}, {"date": "2025-07-16", "value": 130}, {"date": "2026-05-13", "value": 200}]}, {"name": "サイバージャッジ", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 100}, {"date": "2026-05-13", "value": 180}]}, {"name": "ワイルドフォース", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 100}, {"date": "2026-01-07", "value": 200}]}, {"name": "シャイニートレジャー", "prices": [{"date": "2025-07-02", "value": 390}, {"date": "2025-07-09", "value": 420}, {"date": "2025-07-16", "value": 390}]}, {"name": "古代の咆哮", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 120}, {"date": "2026-01-07", "value": 170}]}, {"name": "未来の一閃", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 120}, {"date": "2026-03-25", "value": 200}]}, {"name": "レイジングサーフ", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 120}, {"date": "2026-05-13", "value": 190}]}, {"name": "黒炎の支配者", "prices": [{"date": "2025-07-02", "value": 140}, {"date": "2025-07-09", "value": 130}, {"date": "2025-07-16", "value": 120}, {"date": "2026-05-13", "value": 220}]}, {"name": "ポケモンカード151", "prices": [{"date": "2025-07-02", "value": 500}, {"date": "2025-07-09", "value": 510}, {"date": "2025-07-16", "value": 510}, {"date": "2026-04-22", "value": 1000}]}, {"name": "スノーハザード", "prices": [{"date": "2025-07-02", "value": 110}, {"date": "2025-07-09", "value": 110}, {"date": "2025-07-16", "value": 110}, {"date": "2026-05-07", "value": 170}]}, {"name": "クレイバースト", "prices": [{"date": "2025-07-02", "value": 130}, {"date": "2025-07-09", "value": 130}, {"date": "2025-07-16", "value": 130}, {"date": "2026-05-13", "value": 170}]}, {"name": "トリプレットビート", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 120}, {"date": "2026-04-22", "value": 180}]}, {"name": "バイオレットex", "prices": [{"date": "2025-07-02", "value": 110}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 120}, {"date": "2026-05-07", "value": 160}]}, {"name": "スカーレットex", "prices": [{"date": "2025-07-02", "value": 110}, {"date": "2025-07-09", "value": 110}, {"date": "2025-07-16", "value": 110}, {"date": "2026-05-13", "value": 160}]}, {"name": "VSTARユニバース", "prices": [{"date": "2025-07-02", "value": 570}, {"date": "2025-07-09", "value": 630}, {"date": "2025-07-16", "value": 650}, {"date": "2026-05-07", "value": 830}]}, {"name": "パラダイムトリガー", "prices": [{"date": "2025-07-02", "value": 130}, {"date": "2025-07-09", "value": 130}, {"date": "2025-07-16", "value": 130}, {"date": "2026-05-13", "value": 260}]}, {"name": "白熱のアルカナ", "prices": [{"date": "2025-07-02", "value": 180}, {"date": "2025-07-09", "value": 210}, {"date": "2025-07-16", "value": 210}, {"date": "2026-03-25", "value": 320}]}, {"name": "ロストアビス", "prices": [{"date": "2025-07-02", "value": 180}, {"date": "2025-07-09", "value": 200}, {"date": "2025-07-16", "value": 210}, {"date": "2026-05-07", "value": 380}]}, {"name": "Pokemon GO", "prices": [{"date": "2025-07-02", "value": 190}, {"date": "2025-07-09", "value": 180}, {"date": "2025-07-16", "value": 180}]}, {"name": "ダークファンタズマ", "prices": [{"date": "2025-07-02", "value": 160}, {"date": "2025-07-09", "value": 130}, {"date": "2025-07-16", "value": 180}, {"date": "2026-04-22", "value": 540}]}, {"name": "スペースジャグラー", "prices": [{"date": "2025-07-02", "value": 120}, {"date": "2025-07-09", "value": 120}, {"date": "2025-07-16", "value": 130}, {"date": "2026-03-25", "value": 220}]}, {"name": "タイムゲイザー", "prices": [{"date": "2025-07-02", "value": 190}, {"date": "2025-07-09", "value": 170}, {"date": "2025-07-16", "value": 170}, {"date": "2026-04-22", "value": 240}]}, {"name": "バトルリージョン", "prices": [{"date": "2025-07-02", "value": 220}, {"date": "2025-07-09", "value": 210}, {"date": "2025-07-16", "value": 220}, {"date": "2026-03-25", "value": 350}]}, {"name": "スターバース", "prices": [{"date": "2025-07-02", "value": 210}, {"date": "2025-07-09", "value": 210}, {"date": "2025-07-16", "value": 210}, {"date": "2026-03-25", "value": 310}]}, {"name": "VMAXクライマックス", "prices": [{"date": "2025-07-02", "value": 850}, {"date": "2025-07-09", "value": 850}, {"date": "2025-07-16", "value": 840}, {"date": "2026-05-13", "value": 1130}]}, {"name": "25thアニコレ", "prices": [{"date": "2025-07-02", "value": 820}, {"date": "2025-07-09", "value": 870}, {"date": "2025-07-16", "value": 840}, {"date": "2026-05-07", "value": 1450}]}, {"name": "フュージョンアーツ", "prices": [{"date": "2025-07-02", "value": 310}, {"date": "2025-07-09", "value": 280}, {"date": "2025-07-16", "value": 300}, {"date": "2026-05-07", "value": 450}]}, {"name": "蒼空ストリーム", "prices": [{"date": "2025-07-02", "value": 990}, {"date": "2025-07-09", "value": 980}, {"date": "2025-07-16", "value": 1040}, {"date": "2026-05-07", "value": 1350}]}, {"name": "摩天パーフェクト", "prices": [{"date": "2025-07-02", "value": 210}, {"date": "2025-07-09", "value": 210}, {"date": "2025-07-16", "value": 200}, {"date": "2025-12-16", "value": 200}]}, {"name": "イーブイヒーローズ", "prices": [{"date": "2025-07-02", "value": 860}, {"date": "2025-07-09", "value": 830}, {"date": "2025-07-16", "value": 830}, {"date": "2026-05-13", "value": 1080}]}, {"name": "漆黒のガイスト", "prices": [{"date": "2025-07-02", "value": 170}, {"date": "2025-07-09", "value": 150}, {"date": "2025-07-16", "value": 130}, {"date": "2026-03-25", "value": 240}]}, {"name": "白銀のランス", "prices": [{"date": "2025-07-02", "value": 140}, {"date": "2025-07-09", "value": 140}, {"date": "2025-07-16", "value": 140}, {"date": "2026-04-22", "value": 230}]}, {"name": "双璧のファイター", "prices": [{"date": "2025-07-02", "value": 350}, {"date": "2025-07-09", "value": 320}, {"date": "2025-07-16", "value": 320}, {"date": "2026-04-22", "value": 500}]}, {"name": "連撃マスター", "prices": [{"date": "2025-07-02", "value": 280}, {"date": "2025-07-09", "value": 280}, {"date": "2025-07-16", "value": 280}, {"date": "2026-04-22", "value": 380}]}, {"name": "一撃マスター", "prices": [{"date": "2025-07-02", "value": 230}, {"date": "2025-07-09", "value": 210}, {"date": "2025-07-16", "value": 210}, {"date": "2026-04-22", "value": 400}]}, {"name": "シャイニースターV.", "prices": [{"date": "2025-07-02", "value": 570}, {"date": "2025-07-09", "value": 530}, {"date": "2025-07-16", "value": 610}, {"date": "2026-05-13", "value": 1000}]}, {"name": "仰天のボルテッカー", "prices": [{"date": "2025-07-02", "value": 360}, {"date": "2025-07-09", "value": 310}, {"date": "2025-07-16", "value": 290}, {"date": "2026-04-22", "value": 380}]}, {"name": "伝説の鼓動", "prices": [{"date": "2025-07-02", "value": 500}, {"date": "2025-07-09", "value": 490}, {"date": "2025-07-16", "value": 490}, {"date": "2026-03-25", "value": 790}]}, {"name": "ニンジャスピナー", "prices": [{"date": "2026-05-13", "value": 110}]}, {"name": "ムニキスゼロ", "prices": [{"date": "2026-04-28", "value": 100}]}, {"name": "MEGAドリームex", "prices": [{"date": "2026-05-07", "value": 450}]}, {"name": "インフェルノX", "prices": [{"date": "2026-04-28", "value": 240}]}, {"name": "メガブレイブ", "prices": [{"date": "2026-04-28", "value": 110}]}, {"name": "メガシンフォニア", "prices": [{"date": "2026-05-07", "value": 110}]}, {"name": "シャイニートレジャーex", "prices": [{"date": "2026-04-22", "value": 750}]}, {"name": "ポケモンGO", "prices": [{"date": "2026-05-07", "value": 450}]}]};
+
+// 初期データを常にベースにマージ（削除されたアイテムも復元、ユーザー追加分は保持）
+function mergeWithInitial(saved, initial) {
+  const result = JSON.parse(JSON.stringify(initial));
+  const initialNames = new Set(initial.map(x => x.name));
+  saved.forEach(item => {
+    if (!initialNames.has(item.name)) result.push(item);
+  });
+  const savedMap = {};
+  saved.forEach(item => { savedMap[item.name] = item; });
+  result.forEach(item => {
+    if (savedMap[item.name]) {
+      const savedDates = new Set(item.prices.map(p => p.date));
+      savedMap[item.name].prices.forEach(p => {
+        if (!savedDates.has(p.date)) item.prices.push(p);
+      });
+      item.prices.sort((a,b) => a.date.localeCompare(b.date));
+    }
+  });
+  return result;
+}
+
+function load() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const saved = JSON.parse(s);
+      state.box = mergeWithInitial(saved.box || [], INITIAL_DATA.box);
+      state.pack = mergeWithInitial(saved.pack || [], INITIAL_DATA.pack);
+      save();
+      return;
+    }
+  } catch(e) {}
+  state = JSON.parse(JSON.stringify(INITIAL_DATA));
+  save();
+}
+load();
+renderMain();
+</script>
+</body>
+</html>
