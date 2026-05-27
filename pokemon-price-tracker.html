@@ -199,11 +199,12 @@
   /* ── 管理モーダル ── */
   .manage-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; }
   .manage-row { background: var(--surface); padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
-  .manage-handle { font-size: 18px; color: var(--text3); cursor: grab; touch-action: none; }
+  .manage-handle { font-size: 20px; color: var(--text3); cursor: grab; touch-action: none; padding: 0 4px; user-select: none; -webkit-user-select: none; }
   .manage-name { flex: 1; font-size: 15px; font-weight: 600; }
   .manage-del { background: none; border: none; color: var(--red); font-size: 20px; cursor: pointer; touch-action: manipulation; padding: 0 2px; }
-  .manage-move { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; touch-action: manipulation; padding: 0 3px; line-height: 1; }
-  .manage-move:active { color: var(--accent); }
+  .sortable-ghost { opacity: .35; background: var(--accent) !important; border-radius: var(--radius-sm); }
+  .sortable-chosen { background: var(--surface2) !important; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+
 
   /* ── フローティングボタン ── */
   .fab-area {
@@ -604,39 +605,143 @@ document.getElementById('btnManage').addEventListener('click', () => {
 
 // 削除確認用
 let pendingDeleteIdx = -1;
+let pendingDeleteName = null;
 
-function renderManageList() {
-  pendingDeleteIdx = -1;
-  const confirmArea = document.getElementById('deleteConfirmArea');
-  if (confirmArea) confirmArea.style.display = 'none';
+// ── 軽量タッチドラッグソート（Safari完全対応・外部依存なし） ──
+function initTouchSort(list) {
+  var drag = null;
+  var placeholder = null;
+  var longPressTimer = null;
+  var LONG_PRESS = 180;
 
-  const items = state[currentTab];
-  const list = document.getElementById('manageList');
-  if (!items.length) {
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2)">まだ追加されていません</div>';
-    return;
+  function getRows() { return Array.prototype.slice.call(list.querySelectorAll('.manage-row')); }
+
+  function startDrag(row, clientY) {
+    drag = row;
+    row.classList.add('sortable-chosen');
+    placeholder = document.createElement('div');
+    placeholder.style.cssText = 'height:' + row.offsetHeight + 'px;background:var(--accent);opacity:.2;border-radius:6px;margin:1px 0;transition:none;';
+    row.parentNode.insertBefore(placeholder, row.nextSibling);
+    var rect = list.getBoundingClientRect();
+    row.style.position = 'fixed';
+    row.style.width = list.offsetWidth + 'px';
+    row.style.left = rect.left + 'px';
+    row.style.top = (clientY - row.offsetHeight / 2) + 'px';
+    row.style.zIndex = '999';
+    row.style.boxShadow = '0 8px 24px rgba(0,0,0,.25)';
+    row.style.borderRadius = '8px';
   }
-  list.innerHTML = items.map((item, i) =>
-    `<div class="manage-row" data-idx="${i}">
-      <span class="manage-name" style="flex:1">${escHtml(item.name)}</span>
-      <button class="manage-move" onclick="moveItem(${i},-1)" style="touch-action:manipulation">↑</button>
-      <button class="manage-move" onclick="moveItem(${i},1)" style="touch-action:manipulation">↓</button>
-      <button class="manage-del" onclick="askDelete(${i})" style="touch-action:manipulation">🗑</button>
-    </div>`
-  ).join('');
+
+  function moveDrag(clientY) {
+    if (!drag || !placeholder) return;
+    drag.style.top = (clientY - drag.offsetHeight / 2) + 'px';
+    var rows = getRows();
+    var inserted = false;
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (row === drag) continue;
+      var rect = row.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) {
+        list.insertBefore(placeholder, row);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) list.appendChild(placeholder);
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    if (placeholder && placeholder.parentNode) {
+      list.insertBefore(drag, placeholder);
+      placeholder.parentNode.removeChild(placeholder);
+    }
+    placeholder = null;
+    drag.style.cssText = '';
+    drag.classList.remove('sortable-chosen');
+    var nameOrder = getRows().map(function(r){ return r.dataset.name; });
+    var nameToItem = {};
+    state[currentTab].forEach(function(item){ nameToItem[item.name] = item; });
+    state[currentTab] = nameOrder.map(function(n){ return nameToItem[n]; }).filter(Boolean);
+    save(); renderMain();
+    drag = null;
+  }
+
+  function cancel() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (!drag) return;
+    if (placeholder && placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+    placeholder = null;
+    drag.style.cssText = '';
+    drag.classList.remove('sortable-chosen');
+    drag = null;
+  }
+
+  var handles = list.querySelectorAll('.manage-handle');
+  for (var h = 0; h < handles.length; h++) {
+    (function(handle) {
+      var savedTouch = null;
+      handle.addEventListener('touchstart', function(e) {
+        savedTouch = e.touches[0];
+        var row = handle.closest('.manage-row');
+        var clientY = savedTouch.clientY;
+        longPressTimer = setTimeout(function() {
+          longPressTimer = null;
+          startDrag(row, clientY);
+        }, LONG_PRESS);
+      }, { passive: true });
+
+      handle.addEventListener('touchmove', function(e) {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; return; }
+        if (!drag) return;
+        e.preventDefault();
+        moveDrag(e.touches[0].clientY);
+      }, { passive: false });
+
+      handle.addEventListener('touchend', function(e) {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; return; }
+        endDrag();
+      }, { passive: true });
+
+      handle.addEventListener('touchcancel', function() { cancel(); }, { passive: true });
+    })(handles[h]);
+  }
 }
 
-function moveItem(idx, dir) {
-  const items = state[currentTab];
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= items.length) return;
-  [items[idx], items[newIdx]] = [items[newIdx], items[idx]];
-  save(); renderMain(); renderManageList();
+function renderManageList() {
+  try {
+    pendingDeleteIdx = -1;
+    pendingDeleteName = null;
+    var confirmArea = document.getElementById('deleteConfirmArea');
+    if (confirmArea) confirmArea.style.display = 'none';
+
+    var items = state[currentTab];
+    var list = document.getElementById('manageList');
+    if (!items.length) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2)">まだ追加されていません</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(item, i) {
+      return '<div class="manage-row" data-name="' + escHtml(item.name) + '">' +
+        '<span class="manage-handle">☰</span>' +
+        '<span class="manage-name" style="flex:1">' + escHtml(item.name) + '</span>' +
+        '<button class="manage-del" onclick="askDelete(' + i + ')" style="touch-action:manipulation">🗑</button>' +
+        '</div>';
+    }).join('');
+
+    initTouchSort(list);
+  } catch(e) {
+    console.error('[renderManageList error]', e.message, e.stack);
+  }
 }
 
 function askDelete(idx) {
-  pendingDeleteIdx = idx;
-  const name = state[currentTab][idx].name;
+  // ドラッグ後インデックスずれ対策：DOM順序から名前を取得
+  const rows = document.querySelectorAll('#manageList .manage-row');
+  const name = rows[idx] ? rows[idx].dataset.name : (state[currentTab][idx] ? state[currentTab][idx].name : null);
+  if (!name) return;
+  pendingDeleteIdx = -1; // name基準に切り替え
+  pendingDeleteName = name;
   const area = document.getElementById('deleteConfirmArea');
   document.getElementById('deleteConfirmName').textContent = '「' + name + '」を削除しますか？（履歴も全て削除）';
   area.style.display = 'block';
@@ -644,15 +749,19 @@ function askDelete(idx) {
 }
 
 function confirmDelete() {
-  if (pendingDeleteIdx < 0) return;
-  state[currentTab].splice(pendingDeleteIdx, 1);
+  const target = pendingDeleteName || null;
+  if (!target) return;
+  const idx = state[currentTab].findIndex(x => x.name === target);
+  if (idx >= 0) state[currentTab].splice(idx, 1);
   pendingDeleteIdx = -1;
+  pendingDeleteName = null;
   save(); renderMain(); renderManageList();
   showToast('削除しました');
 }
 
 function cancelDelete() {
   pendingDeleteIdx = -1;
+  pendingDeleteName = null;
   const area = document.getElementById('deleteConfirmArea');
   if (area) area.style.display = 'none';
 }
