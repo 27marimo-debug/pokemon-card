@@ -673,8 +673,6 @@ button.danger:active { background: var(--red); color: #fff; }
 <div id="toast"></div>
 
 <script>
-'use strict';
-
 // ================================================================
 // DB
 // ================================================================
@@ -741,136 +739,150 @@ let pendingDeleteId = null;
 // イベントバインド（DOM構築後に一度だけ実行）
 // ================================================================
 function bindEvents() {
+  try {
 
-  // タブ
-  document.getElementById('tabs').addEventListener('click', function(e) {
-    const t = e.target.closest('.tab');
-    if (t) switchTab(t);
-  });
-
-  // ヘッダー
-  on('btn-export', 'click', () => openModal('exportModal'));
-  on('btn-import', 'click', () => openModal('importModal'));
-
-  // ダッシュボード: 台チップ
-  document.getElementById('machine-selector').addEventListener('click', function(e) {
-    const chip = e.target.closest('.machine-chip');
-    if (!chip) return;
-    if (chip.classList.contains('add-btn')) { openModal('addMachineModal'); return; }
-    const id = chip.dataset.id;
-    if (id) { currentMachineId = id; renderDashboard(); }
-  });
-
-  // 台管理
-  on('btn-open-add-machine', 'click', () => openModal('addMachineModal'));
-
-  // ── 削除ボタン: touchend + click 両対応 ──
-  // confirm() を使わず専用モーダルで確認 → iOS のブロック問題を完全回避
-  const machineListEl = document.getElementById('machine-list-manage');
-
-  function handleDelTap(e) {
-    const btn = e.target.closest('.del-btn');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const id = btn.dataset.id;
-    if (!id) return;
-    openDeleteConfirm(id);
-  }
-  machineListEl.addEventListener('touchend', handleDelTap, { passive: false });
-  machineListEl.addEventListener('click',    handleDelTap);
-
-  // 削除確認モーダル
-  on('btn-confirm-delete', 'click', function() {
-    if (pendingDeleteId) {
-      doDeleteMachine(pendingDeleteId);
-      pendingDeleteId = null;
-    }
-    closeModal('deleteConfirmModal');
-  });
-  on('btn-cancel-delete', 'click', () => {
-    pendingDeleteId = null;
-    closeModal('deleteConfirmModal');
-  });
-
-  // 台追加モーダル
-  on('btn-add-machine',  'click', addMachine);
-  on('btn-cancel-add',   'click', () => closeModal('addMachineModal'));
-
-  // 入力フォーム
-  on('btn-add-hit',    'click', addHitEntry);
-  on('btn-save-input', 'click', saveInputData);
-
-  // 当たり履歴削除
-  const hitListEl = document.getElementById('hit-list-input');
-  function handleHitDel(e) {
-    const btn = e.target.closest('[data-hit-del]');
-    if (!btn) return;
-    e.preventDefault();
-    hitEntries.splice(parseInt(btn.dataset.hitDel), 1);
-    renderHitListInput();
-  }
-  hitListEl.addEventListener('touchend', handleHitDel, { passive: false });
-  hitListEl.addEventListener('click',    handleHitDel);
-
-  // 予測フォーム
-  document.getElementById('pred-machine-sel').addEventListener('change', updateAutoAnalysis);
-  on('btn-save-pred', 'click', savePrediction);
-
-  // 結果入力（予測リスト + 検証リスト）
-  function handleResultOpen(e) {
-    const btn = e.target.closest('[data-result-id]');
-    if (!btn) return;
-    e.preventDefault();
-    openResultModal(btn.dataset.resultId);
-  }
-  ['pred-list','verify-pending-list'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('touchend', handleResultOpen, { passive: false });
-    el.addEventListener('click',    handleResultOpen);
-  });
-
-  on('btn-save-border',   'click', saveBorderEdit);
-  on('btn-cancel-border', 'click', () => closeModal('borderEditModal'));
-
-  on('btn-save-result',   'click', saveResult);
-  on('btn-cancel-result', 'click', () => closeModal('resultModal'));
-
-  // 台管理: ボーダー編集ボタン
-  const machineListEl = document.getElementById('machine-list-manage');
-  function handleEditTap(e) {
-    const btn = e.target.closest('.edit-border-btn');
-    if (!btn) return;
-    e.preventDefault(); e.stopPropagation();
-    openBorderEdit(btn.dataset.id);
-  }
-  machineListEl.addEventListener('touchend', handleEditTap, { passive: false });
-  machineListEl.addEventListener('click',    handleEditTap);
-
-  // 累積参考値リアルタイム更新
-  function updateCumulativePreview() {
-    const prev  = parseInt(document.getElementById('inp-prev-last-spin').value) || 0;
-    const total = parseInt(document.getElementById('inp-total-spin').value) || 0;
-    const el    = document.getElementById('cumulative-spin-preview');
-    if (el) el.textContent = (prev > 0 && total > 0) ? (prev + total).toLocaleString() + ' 回転' : '—';
-  }
-  ['inp-prev-last-spin','inp-total-spin'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', updateCumulativePreview);
-  });
-
-  // エクスポート / インポート
-  on('btn-copy-export',  'click', copyExport);
-  on('btn-close-export', 'click', () => closeModal('exportModal'));
-  on('btn-do-import',    'click', importData);
-  on('btn-close-import', 'click', () => closeModal('importModal'));
-
-  // モーダル背景タップで閉じる
-  document.querySelectorAll('.modal-bg').forEach(bg => {
-    bg.addEventListener('click', function(e) {
-      if (e.target === this) this.classList.remove('open');
+    // タブ
+    document.getElementById('tabs').addEventListener('click', function(e) {
+      const t = e.target.closest('.tab');
+      if (t) switchTab(t);
     });
-  });
+
+    // ヘッダー
+    on('btn-export', 'click', () => openModal('exportModal'));
+    on('btn-import', 'click', () => openModal('importModal'));
+
+    // ダッシュボード: 台チップ
+    document.getElementById('machine-selector').addEventListener('click', function(e) {
+      const chip = e.target.closest('.machine-chip');
+      if (!chip) return;
+      if (chip.classList.contains('add-btn')) { openModal('addMachineModal'); return; }
+      const id = chip.dataset.id;
+      if (id) { currentMachineId = id; renderDashboard(); }
+    });
+
+    // 台管理ページの追加ボタン
+    on('btn-open-add-machine', 'click', () => openModal('addMachineModal'));
+
+    // 台管理リスト: 削除・ボーダー編集を1つのデリゲーションで管理（重複宣言バグを修正）
+    const machineList = document.getElementById('machine-list-manage');
+    if (machineList) {
+      function handleMachineListTap(e) {
+        // 削除ボタン
+        const delBtn = e.target.closest('.del-btn');
+        if (delBtn) {
+          e.preventDefault(); e.stopPropagation();
+          const id = delBtn.dataset.id;
+          if (id) openDeleteConfirm(id);
+          return;
+        }
+        // ボーダー編集ボタン
+        const editBtn = e.target.closest('.edit-border-btn');
+        if (editBtn) {
+          e.preventDefault(); e.stopPropagation();
+          const id = editBtn.dataset.id;
+          if (id) openBorderEdit(id);
+          return;
+        }
+      }
+      machineList.addEventListener('touchend', handleMachineListTap, { passive: false });
+      machineList.addEventListener('click',    handleMachineListTap);
+    }
+
+    // 削除確認モーダル
+    on('btn-confirm-delete', 'click', function() {
+      if (pendingDeleteId) {
+        doDeleteMachine(pendingDeleteId);
+        pendingDeleteId = null;
+      }
+      closeModal('deleteConfirmModal');
+    });
+    on('btn-cancel-delete', 'click', () => {
+      pendingDeleteId = null;
+      closeModal('deleteConfirmModal');
+    });
+
+    // 台追加モーダル
+    on('btn-add-machine', 'click', addMachine);
+    on('btn-cancel-add',  'click', () => closeModal('addMachineModal'));
+
+    // ボーダー編集モーダル
+    on('btn-save-border',   'click', saveBorderEdit);
+    on('btn-cancel-border', 'click', () => closeModal('borderEditModal'));
+
+    // データ入力フォーム
+    on('btn-add-hit',    'click', addHitEntry);
+    on('btn-save-input', 'click', saveInputData);
+
+    // 当たり履歴削除
+    const hitListEl = document.getElementById('hit-list-input');
+    if (hitListEl) {
+      function handleHitDel(e) {
+        const btn = e.target.closest('[data-hit-del]');
+        if (!btn) return;
+        e.preventDefault();
+        hitEntries.splice(parseInt(btn.dataset.hitDel), 1);
+        renderHitListInput();
+      }
+      hitListEl.addEventListener('touchend', handleHitDel, { passive: false });
+      hitListEl.addEventListener('click',    handleHitDel);
+    }
+
+    // 予測フォーム
+    const predSel = document.getElementById('pred-machine-sel');
+    if (predSel) predSel.addEventListener('change', updateAutoAnalysis);
+    on('btn-save-pred', 'click', savePrediction);
+
+    // 結果入力ボタン（予測リスト + 検証リスト）
+    function handleResultOpen(e) {
+      const btn = e.target.closest('[data-result-id]');
+      if (!btn) return;
+      e.preventDefault();
+      openResultModal(btn.dataset.resultId);
+    }
+    ['pred-list', 'verify-pending-list'].forEach(function(elId) {
+      const el = document.getElementById(elId);
+      if (el) {
+        el.addEventListener('touchend', handleResultOpen, { passive: false });
+        el.addEventListener('click',    handleResultOpen);
+      }
+    });
+
+    on('btn-save-result',   'click', saveResult);
+    on('btn-cancel-result', 'click', () => closeModal('resultModal'));
+
+    // 累積参考値リアルタイム更新
+    function updateCumulativePreview() {
+      try {
+        const prevEl  = document.getElementById('inp-prev-last-spin');
+        const totalEl = document.getElementById('inp-total-spin');
+        const dispEl  = document.getElementById('cumulative-spin-preview');
+        if (!prevEl || !totalEl || !dispEl) return;
+        const prev  = parseInt(prevEl.value)  || 0;
+        const total = parseInt(totalEl.value) || 0;
+        dispEl.textContent = (prev > 0 && total > 0) ? (prev + total).toLocaleString() + ' 回転' : '—';
+      } catch(e) { console.error('cumulative preview error', e); }
+    }
+    ['inp-prev-last-spin', 'inp-total-spin'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateCumulativePreview);
+    });
+
+    // エクスポート / インポート
+    on('btn-copy-export',  'click', copyExport);
+    on('btn-close-export', 'click', () => closeModal('exportModal'));
+    on('btn-do-import',    'click', importData);
+    on('btn-close-import', 'click', () => closeModal('importModal'));
+
+    // モーダル背景タップで閉じる
+    document.querySelectorAll('.modal-bg').forEach(function(bg) {
+      bg.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+      });
+    });
+
+  } catch(e) {
+    console.error('bindEvents failed:', e);
+  }
 }
 
 // 短縮ヘルパー
@@ -1806,11 +1818,11 @@ function toast(msg) {
 }
 
 function renderAll() {
-  renderDashboard();
-  populateSelects();
-  renderPredict();
-  renderVerify();
-  renderMachines();
+  try { renderDashboard(); }    catch(e) { console.error('renderDashboard error:', e); }
+  try { populateSelects(); }    catch(e) { console.error('populateSelects error:', e); }
+  try { renderPredict(); }      catch(e) { console.error('renderPredict error:', e); }
+  try { renderVerify(); }       catch(e) { console.error('renderVerify error:', e); }
+  try { renderMachines(); }     catch(e) { console.error('renderMachines error:', e); }
 }
 
 // ── 短縮ヘルパー ──
@@ -1822,8 +1834,22 @@ function todayStr() { return new Date().toISOString().slice(0,10); }
 // ================================================================
 // INIT
 // ================================================================
-bindEvents();
-renderAll();
+try {
+  bindEvents();
+  renderAll();
+} catch(e) {
+  console.error('INIT ERROR:', e);
+  // localStorage 破損時の復旧試行
+  try {
+    localStorage.removeItem(LS_KEY);
+    db = { machines:[], dailyData:{}, predictions:[] };
+    bindEvents();
+    renderAll();
+    console.warn('localStorage cleared and restarted');
+  } catch(e2) {
+    console.error('RECOVERY FAILED:', e2);
+  }
+}
 </script>
 </body>
 </html>
