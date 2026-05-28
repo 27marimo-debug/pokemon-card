@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>台データトラッカー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── デザイントークン ── */
+:root {
+  --bg:     #0d0f1a;
+  --bg2:    #111320;
+  --bg3:    #181b2e;
+  --card:   #1c1f32;
+  --border: #262a42;
+  --accent: #7c6af7;
+  --teal:   #5ef0c0;
+  --text:   #dde0f0;
+  --text2:  #8890b8;
+  --text3:  #4a5070;
+  --gold:   #f0b840;
+  --green:  #5ef080;
+  --red:    #f06060;
+  --r:      14px;
+  --rs:     9px;
+}
+
+/* ── リセット ── */
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  min-height: 100%; background: var(--bg);
+  color: var(--text);
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── ヘッダー ── */
+#header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 14px;
+  height: 48px;
+  display: flex; align-items: center; gap: 8px;
+}
+#header h1 {
+  font-size: 16px; font-weight: 700;
+  letter-spacing: .05em; flex: 1;
+  white-space: nowrap;
+}
+#header h1 span { color: var(--accent); }
+/* hdr-btn は button リセットを上書き */
+.hdr-btn {
+  flex-shrink: 0;
+  background: var(--bg3) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text2) !important;
+  border-radius: var(--rs) !important;
+  padding: 0 12px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  width: auto !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.hdr-btn:active { opacity: .6; }
+
+/* ── タブ ── */
+#tabs {
+  position: sticky; top: 48px; z-index: 90;
+  display: flex; background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+#tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: 0 0 auto; padding: 12px 18px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text3); cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── メイン ── */
+#main { padding: 16px 14px 100px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── カード ── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px 16px;
+  margin-bottom: 16px;
+}
+.card-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text3);
+  margin-bottom: 16px;
+}
+
+/* ── 台セレクタチップ ── */
+#machine-selector {
+  display: flex; align-items: stretch; gap: 8px; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+#machine-selector::-webkit-scrollbar { display: none; }
+.machine-chip {
+  flex: 0 0 auto; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 22px;
+  padding: 8px 16px; line-height: 1.3;
+  font-size: 13px; color: var(--text2);
+  cursor: pointer; touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.machine-chip.active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.machine-chip.add-btn {
+  border-style: dashed;
+  color: var(--accent);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch; /* 横並びの台チップと高さを揃える */
+  padding: 0 18px;
+}
+
+/* ── スタッツグリッド ── */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat-box {
+  background: var(--bg3); border-radius: var(--rs);
+  padding: 14px 8px; text-align: center;
+}
+.stat-label {
+  font-size: 11px; color: var(--text3);
+  margin-bottom: 8px; line-height: 1.3;
+}
+.stat-val {
+  font-size: 19px; font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.stat-val.pos { color: var(--green); }
+.stat-val.neg { color: var(--red); }
+.stat-val.gold { color: var(--gold); }
+.stat-val.acc { color: var(--accent); }
+.stat-val.teal { color: var(--teal); }
+
+/* ── グラフ ── */
+.chart-wrap { position: relative; height: 190px; }
+.chart-wrap-tall { position: relative; height: 250px; }
+
+/* ── フォーム ── */
+.form-section { margin-bottom: 20px; }
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.form-col { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 90px; }
+.form-label { font-size: 12px; color: var(--text3); font-weight: 500; }
+.form-input {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--rs); padding: 10px 12px;
+  color: var(--text); font-size: 15px; width: 100%;
+  -webkit-appearance: none; appearance: none;
+  line-height: 1.4;
+}
+.form-input:focus { outline: none; border-color: var(--accent); }
+select.form-input { cursor: pointer; }
+textarea.form-input { resize: none; }
+
+/* ── ボタン基底（Safari完全対応） ── */
+button {
+  -webkit-appearance: none; appearance: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: var(--rs);
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  pointer-events: auto;
+  min-height: 48px;
+  width: 100%;
+  padding: 0 20px;
+}
+button:active { opacity: .65; }
+button.secondary {
+  background: var(--bg3); color: var(--text2);
+  border: 1px solid var(--border);
+}
+button.sm {
+  width: auto; min-height: 40px;
+  padding: 0 16px; font-size: 13px;
+}
+button.danger {
+  background: #2e0e0e; color: var(--red);
+  border: 1px solid #5a1a1a;
+}
+button.danger:active { background: var(--red); color: #fff; }
+.btn-row {
+  display: flex; gap: 10px; margin-top: 14px;
+}
+.btn-row button { flex: 1; }
+
+/* ── セパレータ ── */
+.sep { height: 1px; background: var(--border); margin: 20px 0; }
+.section-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--text2); margin-bottom: 14px; margin-top: 4px;
+}
+
+/* ── バッジ ── */
+.badge {
+  display: inline-block; flex-shrink: 0;
+  font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: 20px;
+  white-space: nowrap; line-height: 1;
+}
+.badge.gold  { background: #2a200a; color: var(--gold); }
+.badge.green { background: #0a200a; color: var(--green); }
+.badge.red   { background: #200a0a; color: var(--red); }
+.badge.muted { background: var(--bg3); color: var(--text3); }
+
+/* ── リスト ── */
+.list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.list-item:last-child { border-bottom: none; }
+.list-item-main { flex: 1; min-width: 0; }
+.list-item-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.list-item-sub { font-size: 12px; color: var(--text3); line-height: 1.5; }
+
+/* ── 当たり履歴 ── */
+.hit-entry {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.hit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+
+/* ── 予測カード ── */
+.pred-card {
+  background: #161828; border: 1px solid #252840;
+  border-radius: var(--r); padding: 16px; margin-bottom: 12px;
+}
+.pred-type-label {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 5px; margin-bottom: 8px;
+  background: var(--bg3); color: var(--text3);
+}
+.pred-result-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; font-size: 13px;
+}
+
+/* ── 精度メーター ── */
+.accuracy-bar {
+  height: 8px; background: var(--bg3);
+  border-radius: 4px; overflow: hidden; margin: 8px 0;
+}
+.accuracy-fill {
+  height: 100%; border-radius: 4px;
+  background: var(--accent); transition: width .5s;
+}
+
+/* ── 店舗グループ ── */
+.store-group { margin-bottom: 20px; }
+.store-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; margin-bottom: 8px;
+  background: var(--bg3); border-radius: var(--rs);
+  border-left: 3px solid var(--accent);
+}
+.store-name { font-size: 14px; font-weight: 700; flex: 1; }
+.store-count { font-size: 12px; color: var(--text3); }
+
+/* ── 台行 ── */
+.machine-row {
+  display: flex; align-items: stretch;
+  margin-bottom: 8px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rs); overflow: hidden;
+}
+.machine-row-info {
+  flex: 1; min-width: 0;
+  padding: 14px 14px;
+}
+.machine-row-model { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.machine-row-no { color: var(--accent); font-weight: 500; }
+.machine-row-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ── 削除ボタン（最重要: 独立・大きく・前面） ── */
+.del-btn {
+  /* 台行右端に固定 */
+  flex: 0 0 68px;
+  min-height: 100%;
+  /* 見た目 */
+  background: #1e0808;
+  color: #d44;
+  border: none;
+  border-left: 1px solid #3a1010;
+  border-radius: 0;
+  /* テキスト */
+  font-size: 13px; font-weight: 700; line-height: 1;
+  /* タップ */
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  pointer-events: auto;
+  cursor: pointer;
+  /* 前面 */
+  position: relative; z-index: 10;
+  /* flex内 */
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  /* アニメーション */
+  transition: background .15s, color .15s;
+}
+.del-btn:active, .del-btn.confirming {
+  background: #c0392b !important;
+  color: #fff !important;
+}
+/* del-btn の子はイベントを通さない */
+.del-btn * { pointer-events: none; }
+
+/* ── トースト ── */
+#toast {
+  position: fixed; bottom: 90px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 20px; border-radius: 24px;
+  font-size: 13px; font-weight: 600;
+  opacity: 0; transition: all .25s; z-index: 9999;
+  pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── モーダル ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8); z-index: 500;
+  align-items: flex-end;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--card); border-radius: var(--r) var(--r) 0 0;
+  padding: 22px; width: 100%; max-height: 92vh; overflow-y: auto;
+}
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+
+/* ── 空状態 ── */
+.empty {
+  text-align: center; color: var(--text3);
+  padding: 36px 0; font-size: 13px; line-height: 1.8;
+}
+/* 概要カード */
+.overview-card:active { opacity: .75; }
+
+/* ── ユーティリティ ── */
+.row-between { display: flex; justify-content: space-between; align-items: center; }
+.text-sm { font-size: 13px; color: var(--text3); line-height: 1.5; }
+.text-xs { font-size: 11px; color: var(--text3); }
+.mt4 { margin-top: 4px; }
+.mt8 { margin-top: 8px; }
+.mt12 { margin-top: 12px; }
+.mt16 { margin-top: 16px; }
+.store-pill {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  color: var(--teal); background: #0a2020;
+  padding: 2px 8px; border-radius: 4px; margin-bottom: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div id="header">
+  <h1>台<span>DATA</span>トラッカー</h1>
+  <button class="hdr-btn" id="btn-undo" style="display:none;background:#2a1a00;color:#f0b840;border-color:#5a3a00">↩ 戻す</button>
+  <button class="hdr-btn" id="btn-export">出力</button>
+  <button class="hdr-btn" id="btn-import">入力</button>
+</div>
+
+<!-- タブ -->
+<div id="tabs">
+  <div class="tab active" data-page="page-dashboard">ダッシュボード</div>
+  <div class="tab" data-page="page-input">データ入力</div>
+  <div class="tab" data-page="page-predict">予測</div>
+  <div class="tab" data-page="page-verify">検証</div>
+  <div class="tab" data-page="page-machines">台管理</div>
+</div>
+
+<div id="main">
+
+<!-- ======== ダッシュボード ======== -->
+<div id="page-dashboard" class="page active">
+  <div id="machine-selector"></div>
+  <div id="dashboard-content"><div class="empty">台を追加してください</div></div>
+</div>
+
+<!-- ======== データ入力 ======== -->
+<div id="page-input" class="page">
+  <div class="card">
+    <div class="card-label">日別データ入力</div>
+    <div class="form-row">
+      <div class="form-col">
+        <span class="form-label">台を選択</span>
+        <select class="form-input" id="input-machine-sel"></select>
+      </div>
+      <div class="form-col">
+        <span class="form-label">日付</span>
+        <input type="date" class="form-input" id="input-date">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">大当り回数</span><input type="number" class="form-input" id="inp-total-hit" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">初当り</span><input type="number" class="form-input" id="inp-first-hit" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">総回転数</span><input type="number" class="form-input" id="inp-total-spin" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">現在スタート</span><input type="number" class="form-input" id="inp-current-start" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">最大出玉</span><input type="number" class="form-input" id="inp-max-ball" placeholder="0"></div>
+    </div>
+    <div class="sep"></div>
+    <!-- 前日最終回転 -->
+    <div style="background:var(--bg3);border-radius:var(--rs);padding:12px 14px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700;color:var(--teal)">前日最終回転</span>
+        <span style="font-size:11px;color:var(--text3)">任意・未入力でもOK</span>
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-col">
+          <span class="form-label">前日最終回転数</span>
+          <input type="number" class="form-input" id="inp-prev-last-spin" placeholder="例: 650">
+        </div>
+        <div class="form-col">
+          <span class="form-label">累積参考値（自動）</span>
+          <div id="cumulative-spin-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;font-size:15px;color:var(--accent);font-weight:700;min-height:44px;display:flex;align-items:center">
+            —
+          </div>
+        </div>
+      </div>
+      <div class="text-xs" style="margin-top:6px;color:var(--text3)">前日最終 + 当日総回転 の参考合計値</div>
+    </div>
+    <div class="sep"></div>
+    <div class="section-title">スランプグラフ（出玉ポイント列）</div>
+    <div class="text-sm" style="margin-bottom:8px">カンマ区切りで時系列に入力　例: 500,1200,-300,800</div>
+    <textarea class="form-input" id="inp-slump" rows="2" placeholder="500,1200,800,-200,1500"></textarea>
+    <div class="sep"></div>
+    <div class="section-title">当たり履歴</div>
+    <div id="hit-list-input" style="margin-bottom:10px"></div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">回転数</span><input type="number" class="form-input" id="hit-spin" placeholder="200"></div>
+      <div class="form-col"><span class="form-label">種別</span>
+        <select class="form-input" id="hit-type"><option>確変</option><option>時短</option><option>通常</option></select>
+      </div>
+      <div class="form-col" style="justify-content:flex-end">
+        <button class="sm" id="btn-add-hit">＋追加</button>
+      </div>
+    </div>
+    <div class="mt16"><button id="btn-save-input">保存する</button></div>
+  </div>
+</div>
+
+<!-- ======== 予測 ======== -->
+<div id="page-predict" class="page">
+  <div class="card">
+    <div class="card-label">予測作成</div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">対象台</span><select class="form-input" id="pred-machine-sel"></select></div>
+      <div class="form-col"><span class="form-label">予測日</span><input type="date" class="form-input" id="pred-date"></div>
+    </div>
+    <div class="form-col" style="margin-bottom:10px">
+      <span class="form-label">予測タイプ</span>
+      <select class="form-input" id="pred-type">
+        <option value="hit_count">当たり回数（多い/少ない）</option>
+        <option value="diff_trend">差玉トレンド（上昇/下降/横ばい）</option>
+        <option value="big_hit">大当り有無</option>
+        <option value="slump_rebound">スランプ反発</option>
+      </select>
+    </div>
+    <div class="form-col" style="margin-bottom:10px">
+      <span class="form-label">予測値</span>
+      <input type="text" class="form-input" id="pred-value" placeholder="例: 上昇 / 5回以上 / あり">
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <span class="form-label">根拠・メモ</span>
+      <textarea class="form-input" id="pred-memo" rows="2" placeholder="根拠となるパターン・観察内容"></textarea>
+    </div>
+    <div style="background:var(--bg3);border-radius:var(--rs);padding:14px;margin-bottom:16px">
+      <div class="card-label" style="margin-bottom:8px">自動分析ヒント</div>
+      <div id="auto-analysis-text" class="text-sm">台を選択すると表示されます</div>
+    </div>
+    <button id="btn-save-pred">予測を保存</button>
+  </div>
+  <div class="section-title mt16">保存済み予測</div>
+  <div id="pred-list"></div>
+</div>
+
+<!-- ======== 検証 ======== -->
+<div id="page-verify" class="page">
+  <div class="card">
+    <div class="card-label">予測精度サマリー</div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-label">総予測数</div><div class="stat-val acc" id="v-total">0</div></div>
+      <div class="stat-box"><div class="stat-label">結果入力済</div><div class="stat-val gold" id="v-done">0</div></div>
+      <div class="stat-box"><div class="stat-label">的中率</div><div class="stat-val" id="v-rate">-</div></div>
+    </div>
+    <div class="accuracy-bar mt8"><div class="accuracy-fill" id="v-bar" style="width:0%"></div></div>
+    <div id="v-type-breakdown" class="mt8"></div>
+  </div>
+  <div class="section-title mt16">結果入力待ち</div>
+  <div id="verify-pending-list"></div>
+  <div class="section-title mt16">完了済み</div>
+  <div id="verify-done-list"></div>
+</div>
+
+<!-- ======== 台管理 ======== -->
+<div id="page-machines" class="page">
+  <button id="btn-open-add-machine" style="margin-bottom:18px">＋ 新しい台を追加</button>
+  <div id="machine-list-manage"></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ── モーダル: 台追加 ── -->
+<div class="modal-bg" id="addMachineModal">
+  <div class="modal">
+    <div class="modal-title">台を追加</div>
+    <div class="form-col" style="margin-bottom:12px">
+      <span class="form-label">店舗名</span>
+      <input type="text" class="form-input" id="new-store-name" placeholder="例: P'sCUBE" autocomplete="off">
+    </div>
+    <div class="form-col" style="margin-bottom:12px">
+      <span class="form-label">機種名</span>
+      <input type="text" class="form-input" id="new-model-name" placeholder="例: 東京喰種W" autocomplete="off">
+    </div>
+    <div class="form-col" style="margin-bottom:12px">
+      <span class="form-label">台番号</span>
+      <input type="text" class="form-input" id="new-machine-no" placeholder="例: 1133" autocomplete="off">
+    </div>
+    <!-- ボーダー情報（任意） -->
+    <div style="background:var(--bg3);border-radius:var(--rs);padding:12px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:10px">ボーダー参考値（任意）</div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="form-col">
+          <span class="form-label">ボーダー回転数（/千円）</span>
+          <input type="number" class="form-input" id="new-border" placeholder="例: 19.5">
+        </div>
+        <div class="form-col">
+          <span class="form-label">高稼働目安（/千円）</span>
+          <input type="number" class="form-input" id="new-high-spin" placeholder="例: 22">
+        </div>
+      </div>
+      <div class="form-col">
+        <span class="form-label">コンプ上限出玉（任意）</span>
+        <input type="number" class="form-input" id="new-comp-limit" placeholder="例: 10000">
+      </div>
+      <div class="text-xs" style="margin-top:8px;color:var(--text3)">研究・比較用の参考値です。正確な期待値計算には使いません。</div>
+    </div>
+    <div class="btn-row">
+      <button id="btn-add-machine">追加する</button>
+      <button class="secondary" id="btn-cancel-add">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: 削除確認 ── -->
+<div class="modal-bg" id="deleteConfirmModal">
+  <div class="modal">
+    <div class="modal-title">台を削除しますか？</div>
+    <div id="delete-confirm-text" class="text-sm" style="margin-bottom:20px;line-height:1.7"></div>
+    <div class="btn-row">
+      <button class="danger" id="btn-confirm-delete">削除する</button>
+      <button class="secondary" id="btn-cancel-delete">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: ボーダー編集 ── -->
+<div class="modal-bg" id="borderEditModal">
+  <div class="modal">
+    <div class="modal-title">ボーダー参考値を編集</div>
+    <div id="border-edit-machine-name" class="text-sm" style="margin-bottom:14px;color:var(--teal)"></div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-col">
+        <span class="form-label">ボーダー回転数（/千円）</span>
+        <input type="number" class="form-input" id="edit-border" placeholder="例: 19.5">
+      </div>
+      <div class="form-col">
+        <span class="form-label">高稼働目安（/千円）</span>
+        <input type="number" class="form-input" id="edit-high-spin" placeholder="例: 22">
+      </div>
+    </div>
+    <div class="form-col" style="margin-bottom:6px">
+      <span class="form-label">コンプ上限出玉</span>
+      <input type="number" class="form-input" id="edit-comp-limit" placeholder="例: 10000">
+    </div>
+    <div class="text-xs" style="margin-bottom:16px;color:var(--text3)">研究・比較用の参考値です。</div>
+    <input type="hidden" id="edit-border-machine-id">
+    <div class="btn-row">
+      <button id="btn-save-border">保存する</button>
+      <button class="secondary" id="btn-cancel-border">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: 日別データ編集 ── -->
+<div class="modal-bg" id="dailyEditModal">
+  <div class="modal">
+    <div class="modal-title">日別データを編集</div>
+    <div id="daily-edit-header" class="text-sm" style="margin-bottom:14px;color:var(--teal)"></div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">大当り回数</span><input type="number" class="form-input" id="de-total-hit" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">初当り</span><input type="number" class="form-input" id="de-first-hit" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">総回転数</span><input type="number" class="form-input" id="de-total-spin" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">現ハマり回転</span><input type="number" class="form-input" id="de-current-start" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">最大出玉</span><input type="number" class="form-input" id="de-max-ball" placeholder="0"></div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <span class="form-label">前日最終回転（任意）</span>
+      <input type="number" class="form-input" id="de-prev-last-spin" placeholder="0">
+    </div>
+    <input type="hidden" id="de-machine-id">
+    <input type="hidden" id="de-date">
+    <div class="btn-row">
+      <button id="btn-save-daily-edit">保存する</button>
+      <button class="secondary" id="btn-cancel-daily-edit">キャンセル</button>
+    </div>
+    <div style="margin-top:12px">
+      <button class="danger" id="btn-delete-daily">この日のデータを削除</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="resultModal">
+  <div class="modal">
+    <div class="modal-title">実際の結果を入力</div>
+    <div id="result-pred-summary" class="text-sm" style="margin-bottom:16px;line-height:1.7"></div>
+    <div class="form-col" style="margin-bottom:12px">
+      <span class="form-label">実際の結果</span>
+      <input type="text" class="form-input" id="result-actual" placeholder="実際に起きたこと">
+    </div>
+    <div class="form-col" style="margin-bottom:12px">
+      <span class="form-label">的中判定</span>
+      <select class="form-input" id="result-judge">
+        <option value="hit">的中 ✓</option>
+        <option value="miss">外れ ✗</option>
+        <option value="partial">部分的に的中 △</option>
+      </select>
+    </div>
+    <div class="form-col" style="margin-bottom:18px">
+      <span class="form-label">メモ</span>
+      <textarea class="form-input" id="result-memo" rows="2" placeholder="気づいたこと"></textarea>
+    </div>
+    <input type="hidden" id="result-pred-id">
+    <div class="btn-row">
+      <button id="btn-save-result">保存する</button>
+      <button class="secondary" id="btn-cancel-result">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: エクスポート ── -->
+<div class="modal-bg" id="exportModal">
+  <div class="modal">
+    <div class="modal-title">データ出力 (JSON)</div>
+    <textarea class="form-input" id="export-text" rows="8" readonly style="font-size:11px;font-family:monospace;margin-bottom:16px"></textarea>
+    <div class="btn-row">
+      <button id="btn-copy-export">コピー</button>
+      <button class="secondary" id="btn-close-export">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: インポート ── -->
+<div class="modal-bg" id="importModal">
+  <div class="modal">
+    <div class="modal-title">データ読込 (JSON)</div>
+    <textarea class="form-input" id="import-text" rows="8" placeholder="JSONをここに貼り付け" style="font-size:11px;font-family:monospace;margin-bottom:16px"></textarea>
+    <div class="btn-row">
+      <button id="btn-do-import">読込（上書き）</button>
+      <button class="secondary" id="btn-close-import">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ================================================================
+// DB
+// ================================================================
+const LS_KEY = 'pachi_tracker_v2';
+
+function loadDB() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (s) return JSON.parse(s);
+    // v1 移行
+    const v1 = localStorage.getItem('pachi_tracker_v1');
+    if (v1) {
+      const o = JSON.parse(v1);
+      o.machines = (o.machines||[]).map(m => ({storeName:'未設定',favorite:false,...m}));
+      return o;
+    }
+  } catch(e) { console.warn('loadDB error', e); }
+  return { machines:[], dailyData:{}, predictions:[] };
+}
+
+let db = loadDB();
+
+function saveDB() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(db));
+  } catch(e) { console.error('saveDB error', e); }
+}
+
+function getDailyKey(mid, date) { return mid + '__' + date; }
+
+function getMachineDays(mid) {
+  const prefix = mid + '__';
+  return Object.keys(db.dailyData)
+    .filter(k => k.startsWith(prefix))
+    .map(k => ({ date: k.slice(prefix.length), ...db.dailyData[k] }))
+    .sort((a,b) => a.date < b.date ? -1 : 1);
+}
+
+function getStoreNames() {
+  const seen = new Set();
+  const names = [];
+  db.machines.forEach(m => {
+    const s = m.storeName || '未設定';
+    if (!seen.has(s)) { seen.add(s); names.push(s); }
+  });
+  return names.sort();
+}
+
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// STATE
+// ================================================================
+let currentMachineId = null;
+let hitEntries = [];
+// 削除確認待ちの machine id
+let pendingDeleteId = null;
+
+// ================================================================
+// イベントバインド（DOM構築後に一度だけ実行）
+// ================================================================
+function bindEvents() {
+  try {
+
+    // タブ
+    document.getElementById('tabs').addEventListener('click', function(e) {
+      const t = e.target.closest('.tab');
+      if (t) switchTab(t);
+    });
+
+    // ヘッダー
+    on('btn-undo',   'click', undoLast);
+    on('btn-export', 'click', () => openModal('exportModal'));
+    on('btn-import', 'click', () => openModal('importModal'));
+
+    // ダッシュボード: 台チップ
+    document.getElementById('machine-selector').addEventListener('click', function(e) {
+      const chip = e.target.closest('.machine-chip');
+      if (!chip) return;
+      if (chip.classList.contains('add-btn')) { openModal('addMachineModal'); return; }
+      const id = chip.dataset.id;
+      if (id) { currentMachineId = id; renderDashboard(); }
+    });
+
+    // ダッシュボードコンテンツ内の日別編集ボタン（デリゲーション）
+    var dashContent = document.getElementById('dashboard-content');
+    if (dashContent) {
+      dashContent.addEventListener('touchend', function(e) {
+        var btn = e.target.closest('.daily-edit-btn');
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        openDailyEdit(btn.dataset.mid, btn.dataset.date);
+      }, { passive: false });
+      dashContent.addEventListener('click', function(e) {
+        var btn = e.target.closest('.daily-edit-btn');
+        if (!btn) return;
+        openDailyEdit(btn.dataset.mid, btn.dataset.date);
+      });
+    }
+
+    // 台管理ページの追加ボタン
+    on('btn-open-add-machine', 'click', () => openModal('addMachineModal'));
+
+    // 台管理リスト: 削除・ボーダー編集（touchend/click 二重発火対策済み）
+    var machineList = document.getElementById('machine-list-manage');
+    if (machineList) {
+      var _tappedByTouch = false;
+      function handleMachineListTap(e) {
+        if (e.type === 'click' && _tappedByTouch) { _tappedByTouch = false; return; }
+        if (e.type === 'touchend') _tappedByTouch = true;
+        var delBtn = e.target.closest('.del-btn');
+        if (delBtn) {
+          e.preventDefault(); e.stopPropagation();
+          var id = delBtn.dataset.id;
+          if (id) openDeleteConfirm(id);
+          return;
+        }
+        var editBtn = e.target.closest('.edit-border-btn');
+        if (editBtn) {
+          e.preventDefault(); e.stopPropagation();
+          var id2 = editBtn.dataset.id;
+          if (id2) openBorderEdit(id2);
+          return;
+        }
+      }
+      machineList.addEventListener('touchend', handleMachineListTap, { passive: false });
+      machineList.addEventListener('click',    handleMachineListTap);
+    }
+
+    // 削除確認モーダル
+    on('btn-confirm-delete', 'click', function() {
+      if (pendingDeleteId) {
+        doDeleteMachine(pendingDeleteId);
+        pendingDeleteId = null;
+      }
+      closeModal('deleteConfirmModal');
+    });
+    on('btn-cancel-delete', 'click', () => {
+      closeModal('deleteConfirmModal'); // closeModal 内で pendingDeleteId リセット済み
+    });
+
+    // 台追加モーダル
+    on('btn-add-machine', 'click', addMachine);
+    on('btn-cancel-add',  'click', () => closeModal('addMachineModal'));
+
+    // ボーダー編集モーダル
+    on('btn-save-border',   'click', saveBorderEdit);
+    on('btn-cancel-border', 'click', () => closeModal('borderEditModal'));
+
+    // 日別データ編集モーダル
+    on('btn-save-daily-edit',   'click', saveDailyEdit);
+    on('btn-cancel-daily-edit', 'click', () => closeModal('dailyEditModal'));
+    on('btn-delete-daily',      'click', deleteDailyData);
+
+    // データ入力フォーム
+    on('btn-add-hit',    'click', addHitEntry);
+    on('btn-save-input', 'click', saveInputData);
+
+    // 当たり履歴削除
+    var hitListEl = document.getElementById('hit-list-input');
+    if (hitListEl) {
+      function handleHitDel(e) {
+        var btn = e.target.closest('[data-hit-del]');
+        if (!btn) return;
+        e.preventDefault();
+        hitEntries.splice(parseInt(btn.dataset.hitDel), 1);
+        renderHitListInput();
+      }
+      hitListEl.addEventListener('touchend', handleHitDel, { passive: false });
+      hitListEl.addEventListener('click',    handleHitDel);
+    }
+
+    // 予測フォーム
+    var predSel = document.getElementById('pred-machine-sel');
+    if (predSel) predSel.addEventListener('change', updateAutoAnalysis);
+    on('btn-save-pred', 'click', savePrediction);
+
+    // 結果入力ボタン（予測リスト + 検証リスト）
+    function handleResultOpen(e) {
+      var btn = e.target.closest('[data-result-id]');
+      if (!btn) return;
+      e.preventDefault();
+      openResultModal(btn.dataset.resultId);
+    }
+    ['pred-list', 'verify-pending-list'].forEach(function(elId) {
+      var el = document.getElementById(elId);
+      if (el) {
+        el.addEventListener('touchend', handleResultOpen, { passive: false });
+        el.addEventListener('click',    handleResultOpen);
+      }
+    });
+
+    on('btn-save-result',   'click', saveResult);
+    on('btn-cancel-result', 'click', () => closeModal('resultModal'));
+
+    // 累積参考値リアルタイム更新
+    function updateCumulativePreview() {
+      try {
+        var prevEl  = document.getElementById('inp-prev-last-spin');
+        var totalEl = document.getElementById('inp-total-spin');
+        var dispEl  = document.getElementById('cumulative-spin-preview');
+        if (!prevEl || !totalEl || !dispEl) return;
+        var prev  = parseInt(prevEl.value)  || 0;
+        var total = parseInt(totalEl.value) || 0;
+        dispEl.textContent = (prev > 0 && total > 0) ? (prev + total).toLocaleString() + ' 回転' : '—';
+      } catch(e) { console.error('cumulative preview error', e); }
+    }
+    ['inp-prev-last-spin', 'inp-total-spin'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateCumulativePreview);
+    });
+
+    // エクスポート / インポート
+    on('btn-copy-export',  'click', copyExport);
+    on('btn-close-export', 'click', () => closeModal('exportModal'));
+    on('btn-do-import',    'click', importData);
+    on('btn-close-import', 'click', () => closeModal('importModal'));
+
+    // モーダル背景タップで閉じる（closeModal 経由で pendingDeleteId も自動リセット）
+    document.querySelectorAll('.modal-bg').forEach(function(bg) {
+      bg.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+      });
+    });
+
+  } catch(e) {
+    console.error('bindEvents failed:', e);
+  }
+}
+
+// 短縮ヘルパー
+function on(id, ev, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(ev, fn);
+}
+
+// ================================================================
+// 削除確認モーダル（confirm() を完全排除）
+// ================================================================
+function openDeleteConfirm(id) {
+  const m = db.machines.find(m => m.id === id);
+  if (!m) return;
+  pendingDeleteId = id;
+  const days = getMachineDays(id).length;
+  document.getElementById('delete-confirm-text').innerHTML =
+    `<b>${esc(m.storeName)} / ${esc(m.model)} ${esc(m.no)}番</b><br>` +
+    `記録データ ${days}日分もすべて削除されます。<br>この操作は元に戻せません。`;
+  openModal('deleteConfirmModal');
+}
+
+// ================================================================
+// MACHINES
+// ================================================================
+function addMachine() {
+  const store = v('new-store-name');
+  const model = v('new-model-name');
+  const no    = v('new-machine-no');
+  if (!store||!model||!no) { toast('店舗名・機種名・台番号を入力してください'); return; }
+  const border    = parseFloat(document.getElementById('new-border').value)    || null;
+  const highSpin  = parseFloat(document.getElementById('new-high-spin').value) || null;
+  const compLimit = parseInt(document.getElementById('new-comp-limit').value)  || null;
+  const newM = {
+    id: String(Date.now()),
+    storeName: store, model, no,
+    favorite: false,
+    border,      // ボーダー回転数(/千円)
+    highSpin,    // 高稼働目安(/千円)
+    compLimit,   // コンプ上限出玉
+    addedAt: new Date().toISOString()
+  };
+  db.machines.push(newM);
+  saveDB();
+  closeModal('addMachineModal');
+  ['new-store-name','new-model-name','new-machine-no','new-border','new-high-spin','new-comp-limit']
+    .forEach(id => set(id,''));
+  renderAll();
+  toast('台を追加しました');
+}
+
+function openBorderEdit(id) {
+  const m = db.machines.find(m=>m.id===id);
+  if (!m) return;
+  document.getElementById('border-edit-machine-name').textContent = `${m.storeName} / ${m.model} ${m.no}番`;
+  document.getElementById('edit-border-machine-id').value = id;
+  document.getElementById('edit-border').value    = m.border    ?? '';
+  document.getElementById('edit-high-spin').value = m.highSpin  ?? '';
+  document.getElementById('edit-comp-limit').value= m.compLimit ?? '';
+  openModal('borderEditModal');
+}
+
+function saveBorderEdit() {
+  const id = v('edit-border-machine-id');
+  const m  = db.machines.find(m=>m.id===id);
+  if (!m) return;
+  m.border    = parseFloat(document.getElementById('edit-border').value)    || null;
+  m.highSpin  = parseFloat(document.getElementById('edit-high-spin').value) || null;
+  m.compLimit = parseInt(document.getElementById('edit-comp-limit').value)  || null;
+  saveDB();
+  closeModal('borderEditModal');
+  renderAll();
+  toast('ボーダー情報を更新しました');
+}
+
+// ================================================================
+// 日別データ 編集 / 削除
+// ================================================================
+function openDailyEdit(machineId, date) {
+  const key  = getDailyKey(machineId, date);
+  const data = db.dailyData[key];
+  if (!data) { toast('データが見つかりません'); return; }
+  const m = db.machines.find(m => m.id === machineId);
+  document.getElementById('daily-edit-header').textContent =
+    `${m ? m.model+' '+m.no+'番' : ''} / ${date}`;
+  document.getElementById('de-machine-id').value    = machineId;
+  document.getElementById('de-date').value          = date;
+  document.getElementById('de-total-hit').value     = data.totalHit     || '';
+  document.getElementById('de-first-hit').value     = data.firstHit     || '';
+  document.getElementById('de-total-spin').value    = data.totalSpin    || '';
+  document.getElementById('de-current-start').value = data.currentStart || '';
+  document.getElementById('de-max-ball').value      = data.maxBall      || '';
+  document.getElementById('de-prev-last-spin').value= data.prevLastSpin || '';
+  openModal('dailyEditModal');
+}
+
+function saveDailyEdit() {
+  const machineId = document.getElementById('de-machine-id').value;
+  const date      = document.getElementById('de-date').value;
+  if (!machineId || !date) return;
+  const key  = getDailyKey(machineId, date);
+  const prev = db.dailyData[key] || {};
+  const prevLastSpin = parseInt(document.getElementById('de-prev-last-spin').value) || 0;
+  const totalSpin    = parseInt(document.getElementById('de-total-spin').value) || 0;
+  db.dailyData[key] = {
+    ...prev, // hits・slumpPoints などは保持
+    totalHit:     parseInt(document.getElementById('de-total-hit').value)      || 0,
+    firstHit:     parseInt(document.getElementById('de-first-hit').value)      || 0,
+    totalSpin,
+    currentStart: parseInt(document.getElementById('de-current-start').value)  || 0,
+    maxBall:      parseInt(document.getElementById('de-max-ball').value)        || 0,
+    prevLastSpin,
+    cumulativeSpin: prevLastSpin > 0 ? prevLastSpin + totalSpin : null,
+    updatedAt: new Date().toISOString()
+  };
+  saveDB();
+  closeModal('dailyEditModal');
+  renderAll();
+  toast('データを更新しました');
+}
+
+function deleteDailyData() {
+  const machineId = document.getElementById('de-machine-id').value;
+  const date      = document.getElementById('de-date').value;
+  if (!machineId || !date) return;
+  const key = getDailyKey(machineId, date);
+  takeUndoSnapshot(`日別削除: ${date}`);
+  delete db.dailyData[key];
+  saveDB();
+  closeModal('dailyEditModal');
+  renderAll();
+  toast(date + ' のデータを削除しました（元に戻すボタンあり）');
+}
+// ================================================================
+// Undo バッファ（1世代）
+// ================================================================
+let _undoSnapshot = null; // { db: deepcopy, label: string }
+
+function takeUndoSnapshot(label) {
+  try {
+    _undoSnapshot = { db: JSON.parse(JSON.stringify(db)), label };
+  } catch(e) { console.error('takeUndoSnapshot error:', e); }
+}
+
+function undoLast() {
+  if (!_undoSnapshot) { toast('元に戻すデータがありません'); return; }
+  db = _undoSnapshot.db;
+  _undoSnapshot = null;
+  currentMachineId = null;
+  saveDB();
+  renderAll();
+  toast('元に戻しました');
+}
+
+// ================================================================
+// 台削除（undo対応）
+// ================================================================
+function doDeleteMachine(id) {
+  try {
+    // Undo 用スナップショットを取得
+    const m = db.machines.find(m => m.id === id);
+    takeUndoSnapshot(`台削除: ${m ? m.model + ' ' + m.no + '番' : id}`);
+
+    // 1. machines 配列から除去
+    const before = db.machines.length;
+    db.machines = db.machines.filter(m => m.id !== id);
+    console.log(`deleteMachine: ${before} -> ${db.machines.length} (removed id=${id})`);
+
+    // 2. 日別データを削除
+    const prefix = id + '__';
+    Object.keys(db.dailyData).forEach(k => {
+      if (k.startsWith(prefix)) delete db.dailyData[k];
+    });
+
+    // 3. 予測データを削除
+    db.predictions = db.predictions.filter(p => p.machineId !== id);
+
+    // 4. currentMachineId をリセット
+    if (currentMachineId === id) {
+      currentMachineId = db.machines.length > 0 ? db.machines[0].id : null;
+    }
+
+    // 5. 保存
+    saveDB();
+
+    // 6. 全画面を再描画
+    renderAll();
+    toast('台を削除しました（元に戻すボタンあり）');
+  } catch(e) {
+    console.error('doDeleteMachine error:', e);
+    toast('削除中にエラーが発生しました');
+  }
+}
+
+// ================================================================
+// INPUT DATA
+// ================================================================
+function addHitEntry() {
+  const spin = v('hit-spin');
+  const type = document.getElementById('hit-type').value;
+  if (!spin) { toast('回転数を入力'); return; }
+  hitEntries.push({ spin: parseInt(spin), type });
+  set('hit-spin','');
+  renderHitListInput();
+}
+
+function renderHitListInput() {
+  const el = document.getElementById('hit-list-input');
+  if (!hitEntries.length) { el.innerHTML = ''; return; }
+  el.innerHTML = hitEntries.map((h,i) =>
+    `<div class="hit-entry">
+      <div class="hit-dot"></div>
+      <span>${h.spin}回転 / ${esc(h.type)}</span>
+      <button class="sm danger" data-hit-del="${i}" style="margin-left:auto">削除</button>
+    </div>`
+  ).join('');
+}
+
+function saveInputData() {
+  const mid  = document.getElementById('input-machine-sel').value;
+  const date = v('input-date');
+  if (!mid||!date) { toast('台と日付を選択してください'); return; }
+  const raw = v('inp-slump');
+  const slumpPoints = raw.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
+  const prevLastSpin = n('inp-prev-last-spin'); // 0 = 未入力扱い
+  const totalSpin    = n('inp-total-spin');
+  const data = {
+    totalHit:     n('inp-total-hit'),
+    firstHit:     n('inp-first-hit'),
+    totalSpin,
+    currentStart: n('inp-current-start'),
+    maxBall:      n('inp-max-ball'),
+    prevLastSpin,                                          // 前日最終回転（0=未入力）
+    cumulativeSpin: prevLastSpin > 0 ? prevLastSpin + totalSpin : null, // 累積参考値
+    slumpPoints,
+    hits: [...hitEntries],
+    savedAt: new Date().toISOString()
+  };
+  db.dailyData[getDailyKey(mid, date)] = data;
+  saveDB();
+  hitEntries = [];
+  renderHitListInput();
+  ['inp-total-hit','inp-first-hit','inp-total-spin','inp-current-start','inp-max-ball','inp-prev-last-spin','inp-slump']
+    .forEach(id => set(id,''));
+  document.getElementById('cumulative-spin-preview').textContent = '—';
+  renderAll();
+  toast('データを保存しました');
+}
+
+// ================================================================
+// PREDICTIONS
+// ================================================================
+const PRED_LABELS = {
+  hit_count:     '当たり回数',
+  diff_trend:    '差玉トレンド',
+  big_hit:       '大当り有無',
+  slump_rebound: 'スランプ反発'
+};
+
+function updateAutoAnalysis() {
+  const mid = document.getElementById('pred-machine-sel').value;
+  const el  = document.getElementById('auto-analysis-text');
+  if (!mid) { el.textContent = '台を選択すると表示されます'; return; }
+  const days = getMachineDays(mid);
+  if (days.length < 2) { el.textContent = 'データが2日以上あると分析できます'; return; }
+  const hints = [];
+  const lat   = days[days.length-1];
+  const est   = estimateStatus(days);
+
+  // 状態推定結果
+  if (est) hints.push(`📊 推定状態: <b style="color:${est.color}">${est.label}</b>`);
+
+  // 当たり間隔
+  if (est && est.interval) hints.push(`🎰 平均当たり間隔: ${est.interval}回転`);
+
+  // 累積参考値
+  if (est && est.cumSpin) hints.push(`🔢 累積参考値: ${est.cumSpin.toLocaleString()}回転`);
+
+  // 初当り推移
+  if (days.length >= 3) {
+    const recent = days.slice(-3).map(d=>d.firstHit);
+    const inc = recent[2] - recent[0];
+    hints.push(inc > 1 ? '📈 初当り：増加傾向' : inc < -1 ? '📉 初当り：減少傾向' : '➡️ 初当り：横ばい');
+  }
+
+  // 大当りゼロ連続
+  const zeroStreak = [...days].reverse().findIndex(d => d.totalHit > 0);
+  if (zeroStreak > 1) hints.push(`⚠️ 大当りなし ${zeroStreak}日連続`);
+
+  // 放出→飲み込み
+  if (est && est.drainSuspect) hints.push('⚠️ 放出後に飲まれた可能性あり');
+
+  el.innerHTML = hints.length
+    ? hints.map(h=>`<div style="margin-bottom:6px">${h}</div>`).join('')
+    : '特記事項なし';
+}
+
+function savePrediction() {
+  const mid  = document.getElementById('pred-machine-sel').value;
+  const date = v('pred-date');
+  const type = document.getElementById('pred-type').value;
+  const raw  = v('pred-value');
+  const memo = v('pred-memo');
+  if (!mid||!date||!raw) { toast('必須項目を入力してください'); return; }
+
+  // 数値型予測は Number 変換、文字列型はそのまま
+  const numericTypes = ['hit_count'];
+  const numTry = Number(raw);
+  const value  = (numericTypes.includes(type) && !isNaN(numTry) && raw !== '')
+    ? numTry
+    : raw;
+  const valueType = (typeof value === 'number') ? 'number' : 'string';
+
+  db.predictions.push({
+    id: String(Date.now()),
+    machineId: mid, date, type,
+    value,       // number or string
+    valueType,   // 型を明示保存
+    memo,
+    result: null, resultMemo: '', judge: null,
+    createdAt: new Date().toISOString()
+  });
+  saveDB();
+  set('pred-value',''); set('pred-memo','');
+  renderAll();
+  toast('予測を保存しました');
+}
+
+function openResultModal(predId) {
+  const pred = db.predictions.find(p=>p.id===predId);
+  if (!pred) return;
+  const m = db.machines.find(m=>m.id===pred.machineId);
+  set('result-pred-id', predId);
+  document.getElementById('result-pred-summary').innerHTML =
+    `<b>${m ? esc(m.storeName)+' / '+esc(m.model)+' '+esc(m.no)+'番' : '?'}</b><br>` +
+    `${pred.date} / 予測: ${esc(pred.value)}`;
+  set('result-actual',  pred.result||'');
+  document.getElementById('result-judge').value = pred.judge||'hit';
+  set('result-memo', pred.resultMemo||'');
+  openModal('resultModal');
+}
+
+function saveResult() {
+  const id = v('result-pred-id');
+  const pred = db.predictions.find(p=>p.id===id);
+  if (!pred) return;
+  pred.result     = v('result-actual');
+  pred.judge      = document.getElementById('result-judge').value;
+  pred.resultMemo = v('result-memo');
+  saveDB();
+  closeModal('resultModal');
+  renderAll();
+  toast('結果を保存しました');
+}
+
+// ================================================================
+// CHARTS
+// ================================================================
+const charts = {};
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderSpinChart(id, days) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const labels = days.map(d=>d.date.slice(5));
+  const vals   = days.map(d=>d.totalSpin);
+  charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{
+      label:'総回転', data:vals,
+      borderColor:'#7c6af7', backgroundColor:'rgba(124,106,247,.12)',
+      fill:true, tension:.35, pointRadius:5,
+      pointBackgroundColor:'#7c6af7'
+    }]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:'#4a5070', font:{size:11} }, grid:{ color:'#181b2e' } },
+        y:{ ticks:{ color:'#4a5070', font:{size:11} }, grid:{ color:'#181b2e' } }
+      }
+    }
+  });
+}
+
+function renderHitsChart(id, days) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const labels = days.map(d=>d.date.slice(5));
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label:'初当り', data: days.map(d=>d.firstHit),
+        backgroundColor:'rgba(94,240,192,.7)', borderRadius:4 },
+      { label:'大当り', data: days.map(d=>d.totalHit),
+        backgroundColor:'rgba(240,184,64,.5)', borderRadius:4 }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, labels:{ color:'#8890b8', font:{size:11} } } },
+      scales:{
+        x:{ ticks:{ color:'#4a5070', font:{size:11} }, grid:{ color:'#181b2e' } },
+        y:{ ticks:{ color:'#4a5070', font:{size:11} }, grid:{ color:'#181b2e' } }
+      }
+    }
+  });
+}
+
+function renderSlumpChart(id, days) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  let pts = [];
+  days.forEach(d => { if (d.slumpPoints&&d.slumpPoints.length) pts = pts.concat(d.slumpPoints); });
+  if (!pts.length) {
+    if (ctx.parentElement) ctx.parentElement.innerHTML = '<div class="empty">スランプデータなし</div>';
+    return;
+  }
+  charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: pts.map((_,i)=>i+1), datasets: [{
+      label:'差玉', data:pts,
+      borderColor:'#5ef0c0', backgroundColor:'rgba(94,240,192,.08)',
+      fill:true, tension:.2, pointRadius:2, borderWidth:2
+    }]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ display:false },
+        y:{ ticks:{ color:'#4a5070', font:{size:11} }, grid:{ color:'#181b2e' } }
+      }
+    }
+  });
+}
+
+// ================================================================
+// 台状態推定・分析タグ生成
+// ※ すべての参照を null/undefined セーフに保護
+// ================================================================
+function estimateStatus(days, machine) {
+  try {
+    if (!days || !days.length) return null;
+    const lat = days[days.length - 1];
+    if (!lat) return null;
+
+    // フィールドを安全に取得（未定義は 0 扱い）
+    const totalSpin    = Number(lat.totalSpin)    || 0;
+    const totalHit     = Number(lat.totalHit)     || 0;
+    const firstHit     = Number(lat.firstHit)     || 0;
+    const maxBall      = Number(lat.maxBall)       || 0;
+    const currentStart = Number(lat.currentStart) || 0;
+    const prevLastSpin = Number(lat.prevLastSpin) || 0;
+    const cumSpin      = lat.cumulativeSpin
+      || (prevLastSpin > 0 ? prevLastSpin + totalSpin : null);
+
+    // ── 基本指標 ──
+    const interval     = firstHit > 0 ? Math.round(totalSpin / firstHit) : null;
+    const noHitToday   = totalSpin > 0 && totalHit === 0;
+    const maxBallHigh  = maxBall > 3000;
+    const currentLow   = currentStart > 0 && currentStart < 300;
+    const drainSuspect = maxBallHigh && currentLow;
+
+    // ── 数日トレンド ──
+    let firstHitTrend = null;
+    if (days.length >= 3) {
+      const recent = days.slice(-3).map(d => Number(d.firstHit) || 0);
+      const diff = recent[2] - recent[0];
+      firstHitTrend = diff > 1 ? 'up' : diff < -1 ? 'down' : 'flat';
+    }
+
+    // ── ボーダー比較 ──
+    const m = machine || null;
+    let estimatedSpinPerK = null;
+    let borderJudge = null;
+    if (m && m.border && totalSpin > 0 && firstHit > 0) {
+      // 推定回転率 = (初当り数 / 総回転数) × ボーダー × 1000
+      estimatedSpinPerK = Math.round((firstHit / totalSpin) * Number(m.border) * 1000) / 10;
+      const border   = Number(m.border);
+      const highSpin = m.highSpin ? Number(m.highSpin) : null;
+      if (highSpin && estimatedSpinPerK >= highSpin) borderJudge = 'high';
+      else if (estimatedSpinPerK >= border)          borderJudge = 'good';
+      else if (estimatedSpinPerK >= border * 0.9)    borderJudge = 'normal';
+      else                                           borderJudge = 'low';
+    }
+
+    // ── コンプ圏判定 ──
+    let compJudge = null;
+    if (m && m.compLimit && maxBall > 0) {
+      const ratio = maxBall / Number(m.compLimit);
+      if (ratio >= 0.9)      compJudge = 'comp_hit';
+      else if (ratio >= 0.7) compJudge = 'comp_near';
+      else if (ratio >= 0.5) compJudge = 'comp_mid';
+    }
+
+    // ── タグ生成 ──
+    const tags = [];
+
+    if      (borderJudge === 'high') tags.push({ key:'high_spin', label:'🔥 高稼働',      color:'#f06060' });
+    else if (borderJudge === 'good') tags.push({ key:'good_spin', label:'✅ 回転良好',    color:'#5ef080' });
+    else if (borderJudge === 'low')  tags.push({ key:'low_spin',  label:'⚠️ 回転低め',    color:'#f0b840' });
+
+    if      (compJudge === 'comp_hit')  tags.push({ key:'comp_hit',  label:'🏆 コンプ級',    color:'#f0b840' });
+    else if (compJudge === 'comp_near') tags.push({ key:'comp_near', label:'💫 コンプ圏接近', color:'#7c6af7' });
+
+    if      (drainSuspect) tags.push({ key:'drain',   label:'💸 放出→飲まれ', color:'#f0b840' });
+    else if (maxBallHigh)  tags.push({ key:'release', label:'🎯 放出台傾向',   color:'#5ef0c0' });
+
+    if (noHitToday) tags.push({ key:'deep_hama', label:'🔴 深ハマり', color:'#f06060' });
+
+    // ── 波荒スコア判定 ──
+    let waveScore = 0;
+    if (interval !== null && interval > 250)  waveScore++;
+    if (firstHit <= 1 && totalSpin > 400)     waveScore++;
+    if (maxBall > 4000 && currentStart > 0 && currentStart < 200) waveScore++;
+    if (days.length >= 2) {
+      const prev = days[days.length - 2];
+      if (prev) {
+        const prevMax = Number(prev.maxBall) || 0;
+        if (Math.abs(maxBall - prevMax) > 3000) waveScore++;
+      }
+    }
+    if (days.length >= 3) {
+      const recentH = days.slice(-3).map(d => Number(d.firstHit) || 0);
+      if (Math.max(...recentH) - Math.min(...recentH) >= 3) waveScore++;
+    }
+    if (waveScore >= 2) tags.push({ key:'heavy', label:'🌊 波荒', color:'#f06060' });
+
+    if (interval !== null && interval < 150 && firstHit >= 3)
+      tags.push({ key:'good', label:'⭐ 好調', color:'#5ef080' });
+
+    if (firstHitTrend === 'down' && firstHit <= 1 && !noHitToday)
+      tags.push({ key:'slump', label:'📉 凹み', color:'#f06060' });
+
+    if (firstHitTrend === 'up' || (noHitToday && cumSpin && cumSpin > 600))
+      tags.push({ key:'rebound', label:'📈 反発候補', color:'#5ef0c0' });
+
+    if (days.length >= 2) {
+      const prev = days[days.length - 2];
+      if (prev && maxBall > (Number(prev.maxBall) || 0) * 1.5 && maxBall > 2000)
+        tags.push({ key:'surge', label:'🚀 急上昇挙動', color:'#7c6af7' });
+    }
+
+    if (!tags.length) tags.push({ key:'normal', label:'— 通常', color:'#8890b8' });
+
+    const primary = tags[0];
+
+    // ── 根拠テキスト（m参照はすべて optional chaining で防御） ──
+    const reasons = [];
+    if (interval)          reasons.push(`平均当たり間隔: ${interval}回転`);
+    if (cumSpin)           reasons.push(`累積参考値: ${cumSpin.toLocaleString()}回転`);
+    if (estimatedSpinPerK) reasons.push(`推定回転率: ${estimatedSpinPerK}/千円（ボーダー参考: ${m?.border ?? '—'}）`);
+    if (maxBall)           reasons.push(`最大出玉: ${maxBall.toLocaleString()}${m?.compLimit ? ' / コンプ上限' + Number(m.compLimit).toLocaleString() : ''}`);
+    if (currentStart)      reasons.push(`現ハマり: ${currentStart}回転`);
+    if (drainSuspect)      reasons.push('最大出玉は大きいが現ハマり回転数低め');
+    if (noHitToday)        reasons.push('当日大当りなし');
+    if (firstHitTrend)     reasons.push(`初当り推移: ${firstHitTrend === 'up' ? '増加傾向' : firstHitTrend === 'down' ? '減少傾向' : '横ばい'}`);
+
+    return {
+      tags, primary,
+      label: primary.label, color: primary.color,
+      reasons, interval, drainSuspect, cumSpin, noHitToday,
+      borderJudge, compJudge, estimatedSpinPerK
+    };
+  } catch(e) {
+    console.error('estimateStatus error:', e);
+    return null;
+  }
+}
+
+// ================================================================
+// RENDER: DASHBOARD
+// ================================================================
+function renderDashboard() {
+  // ── 台セレクタチップ ──
+  const sel = document.getElementById('machine-selector');
+  sel.innerHTML = `<div class="machine-chip add-btn">＋ 追加</div>`;
+  db.machines.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'machine-chip' + (m.id === currentMachineId ? ' active' : '');
+    d.dataset.id = m.id;
+    d.innerHTML =
+      `<div style="font-size:10px;opacity:.7;line-height:1.3">${esc(m.storeName||'')}</div>` +
+      `<div>${esc(m.no)}番 ${esc(m.model)}</div>`;
+    sel.appendChild(d);
+  });
+
+  const content = document.getElementById('dashboard-content');
+
+  // 台なし
+  if (!db.machines.length) {
+    content.innerHTML = '<div class="empty">台を追加してください<br>上の「＋ 追加」ボタンから始めます</div>';
+    return;
+  }
+
+  // 台未選択 → 概要一覧
+  if (!currentMachineId || !db.machines.find(m=>m.id===currentMachineId)) {
+    renderDashboardOverview(content);
+    return;
+  }
+
+  // 台選択済み → 詳細ビュー
+  renderDashboardDetail(content, currentMachineId);
+}
+
+// ── 概要ビュー（台未選択時）──
+function renderDashboardOverview(content) {
+  if (!db.machines.length) { content.innerHTML = '<div class="empty">台を追加してください</div>'; return; }
+  content.innerHTML = `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">台チップをタップすると詳細を表示します</div>
+    ${db.machines.map(m => {
+      const days = getMachineDays(m.id);
+      const lat  = days[days.length-1];
+      const est  = lat ? estimateStatus(days, m) : null;
+      return `<div class="card overview-card" data-chip-id="${m.id}" style="cursor:pointer">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:2px">${esc(m.storeName||'')}</div>
+            <div style="font-size:16px;font-weight:700">${esc(m.model)} <span style="color:var(--accent);font-weight:500">${esc(m.no)}番</span></div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">${lat ? lat.date+' / データ'+days.length+'日分' : 'データなし'}</div>
+          </div>
+          ${est ? est.tags.slice(0,2).map(t=>`<span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;background:${t.color}22;color:${t.color};border:1px solid ${t.color}55;white-space:nowrap">${t.label}</span>`).join('') : '<span style="font-size:12px;color:var(--text3)">データなし</span>'}
+          <span style="color:var(--text3);font-size:18px">›</span>
+        </div>
+        ${lat ? `<div class="stats-grid" style="margin-top:12px;grid-template-columns:repeat(3,1fr)">
+          <div class="stat-box"><div class="stat-label">大当り</div><div class="stat-val gold" style="font-size:16px">${Number(lat.totalHit)||0}回</div></div>
+          <div class="stat-box"><div class="stat-label">初当り</div><div class="stat-val acc" style="font-size:16px">${Number(lat.firstHit)||0}回</div></div>
+          <div class="stat-box"><div class="stat-label">総回転</div><div class="stat-val" style="font-size:14px">${(Number(lat.totalSpin)||0).toLocaleString()}</div></div>
+        </div>` : ''}
+      </div>`;
+    }).join('')}
+  `;
+  // 概要カードタップで詳細へ
+  content.querySelectorAll('.overview-card').forEach(card => {
+    card.addEventListener('click', function() {
+      currentMachineId = this.dataset.chipId;
+      renderDashboard();
+    });
+  });
+}
+
+// ── 詳細ビュー（台選択時）──
+function renderDashboardDetail(content, mid) {
+  const m    = db.machines.find(m=>m.id===mid);
+  if (!m) return;
+  const days = getMachineDays(mid);
+  const lat  = days[days.length-1];
+  const est  = lat ? estimateStatus(days, m) : null;
+
+  // 全日付の当たり履歴をまとめる
+  const allHits = days.flatMap(d => (d.hits||[]).map(h => ({ ...h, date: d.date })));
+
+  // 予測履歴（この台）
+  const preds = db.predictions.filter(p=>p.machineId===mid).reverse();
+
+  // ボーダー情報表示
+  const borderInfo = m.border ? `ボーダー ${m.border}/千円${m.highSpin?' / 高稼働目安 '+m.highSpin:''}${m.compLimit?' / コンプ上限 '+m.compLimit.toLocaleString():''}` : null;
+
+  content.innerHTML = `
+    <!-- ← 戻るボタン -->
+    <button class="secondary sm" id="btn-back-overview" style="margin-bottom:12px;width:auto">← 一覧に戻る</button>
+
+    <!-- 台ヘッダー -->
+    <div class="card">
+      <div style="margin-bottom:12px">
+        <div class="store-pill">${esc(m.storeName||'')}</div>
+        <div style="font-size:22px;font-weight:700;line-height:1.2;margin-top:4px">${esc(m.model)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+          <span class="text-sm">${esc(m.no)}番台</span>
+          <span class="text-sm">直近日: <span style="color:var(--accent)">${lat?lat.date:'データなし'}</span></span>
+          <span class="text-sm">計 ${days.length}日分</span>
+        </div>
+        ${borderInfo ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;padding:4px 8px;background:var(--bg3);border-radius:4px;display:inline-block">${borderInfo}</div>` : ''}
+      </div>
+      <!-- 分析タグ（全タグ表示） -->
+      ${est && est.tags.length ? `
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${est.tags.map(t=>`<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;background:${t.color}22;color:${t.color};border:1px solid ${t.color}55">${t.label}</span>`).join('')}
+      </div>` : ''}
+      ${lat ? `
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-label">大当り</div><div class="stat-val gold">${Number(lat.totalHit)||0}回</div></div>
+        <div class="stat-box"><div class="stat-label">初当り</div><div class="stat-val acc">${Number(lat.firstHit)||0}回</div></div>
+        <div class="stat-box"><div class="stat-label">総回転</div><div class="stat-val">${(Number(lat.totalSpin)||0).toLocaleString()}</div></div>
+        <div class="stat-box"><div class="stat-label">現ハマり</div><div class="stat-val ${est&&est.borderJudge==='high'?'neg':est&&est.borderJudge==='good'?'pos':''}">${Number(lat.currentStart)||0}</div></div>
+        <div class="stat-box"><div class="stat-label">最大出玉</div><div class="stat-val teal">${(Number(lat.maxBall)||0).toLocaleString()}</div></div>
+        <div class="stat-box"><div class="stat-label">累積参考値</div><div class="stat-val" style="font-size:15px">${lat.cumulativeSpin ? Number(lat.cumulativeSpin).toLocaleString() : '—'}</div></div>
+      </div>` : '<div class="empty">データを入力してください</div>'}
+    </div>
+
+    <!-- 分析根拠カード -->
+    ${est && est.reasons.length ? `
+    <div class="card" style="border-color:${est.color}44">
+      <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">📊 分析根拠</div>
+      ${est.reasons.map(r=>`<div style="font-size:13px;color:var(--text2);padding:5px 0;border-bottom:1px solid var(--border)">・${r}</div>`).join('')}
+      ${est.drainSuspect ? `<div style="font-size:12px;color:var(--gold);margin-top:8px">⚠️ 最大出玉は出たが現スタート低め → 放出→飲み込みの可能性</div>` : ''}
+    </div>` : ''}
+
+    <!-- 数日推移テーブル -->
+    ${days.length >= 2 ? `
+    <div class="card">
+      <div class="card-label">日別データ一覧（直近10日）</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:360px">
+          <thead>
+            <tr style="color:var(--text3);border-bottom:1px solid var(--border)">
+              <th style="padding:6px 4px;text-align:left;font-weight:600">日付</th>
+              <th style="padding:6px 4px;text-align:right;font-weight:600">大当</th>
+              <th style="padding:6px 4px;text-align:right;font-weight:600">初当</th>
+              <th style="padding:6px 4px;text-align:right;font-weight:600">回転</th>
+              <th style="padding:6px 4px;text-align:right;font-weight:600">最大出玉</th>
+              <th style="padding:6px 4px;text-align:right;font-weight:600">編集</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${[...days].reverse().slice(0,10).map((d,i) => {
+              const isLatest = i===0;
+              const dayEst = estimateStatus([d], m);
+              const tagHtml = dayEst && dayEst.tags[0] && dayEst.tags[0].key !== 'normal'
+                ? `<span style="font-size:10px;color:${dayEst.tags[0].color}">${dayEst.tags[0].label}</span>` : '';
+              return `<tr style="border-bottom:1px solid var(--border);${isLatest?'background:rgba(124,106,247,.06)':''}">
+                <td style="padding:7px 4px">
+                  <div style="font-weight:${isLatest?'700':'400'};color:${isLatest?'var(--accent)':'var(--text)'}">${d.date.slice(5)}</div>
+                  ${tagHtml}
+                </td>
+                <td style="padding:7px 4px;text-align:right;color:var(--gold)">${Number(d.totalHit)||0}</td>
+                <td style="padding:7px 4px;text-align:right;color:var(--teal)">${Number(d.firstHit)||0}</td>
+                <td style="padding:7px 4px;text-align:right">${(Number(d.totalSpin)||0).toLocaleString()}</td>
+                <td style="padding:7px 4px;text-align:right">${(Number(d.maxBall)||0).toLocaleString()}</td>
+                <td style="padding:7px 4px;text-align:right">
+                  <button class="sm secondary daily-edit-btn"
+                    data-mid="${mid}" data-date="${d.date}"
+                    style="font-size:11px;min-height:32px;padding:0 8px">✏️</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+
+    <!-- グラフ: 総回転推移 -->
+    ${days.length>=2 ? `
+    <div class="card">
+      <div class="card-label">総回転数推移（直近7日）</div>
+      <div class="chart-wrap"><canvas id="chart-spin"></canvas></div>
+    </div>` : ''}
+
+    <!-- グラフ: 初当り・大当り -->
+    ${days.length>=2 ? `
+    <div class="card">
+      <div class="card-label">初当り・大当り推移（直近7日）</div>
+      <div class="chart-wrap"><canvas id="chart-hits"></canvas></div>
+    </div>` : ''}
+
+    <!-- スランプグラフ -->
+    ${days.some(d=>d.slumpPoints&&d.slumpPoints.length) ? `
+    <div class="card">
+      <div class="card-label">スランプグラフ（直近3日）</div>
+      <div class="chart-wrap-tall"><canvas id="chart-slump"></canvas></div>
+    </div>` : ''}
+
+    <!-- 当たり履歴（全日） -->
+    ${allHits.length ? `
+    <div class="card">
+      <div class="card-label">当たり履歴（全記録 ${allHits.length}件）</div>
+      ${allHits.slice(0,30).map(h=>`
+      <div class="hit-entry">
+        <div class="hit-dot"></div>
+        <span style="color:var(--text3);font-size:12px;min-width:52px">${h.date.slice(5)}</span>
+        <span>${h.spin}回転</span>
+        <span class="badge gold" style="margin-left:auto">${esc(h.type)}</span>
+      </div>`).join('')}
+      ${allHits.length>30?`<div class="text-xs" style="padding:8px 0;text-align:center">他 ${allHits.length-30}件</div>`:''}
+    </div>` : ''}
+
+    <!-- 予測履歴 -->
+    <div class="card">
+      <div class="card-label">予測履歴（この台）</div>
+      ${preds.length ? preds.slice(0,10).map(p => {
+        const [jc,jl] = judgeInfo(p.judge);
+        return `<div class="list-item">
+          <div class="list-item-main">
+            <div class="list-item-title">${p.date} <span style="font-weight:400;color:var(--text3)">${PRED_LABELS[p.type]||p.type}</span></div>
+            <div class="list-item-sub">${esc(p.value)}${p.result?' → '+esc(p.result):''}</div>
+          </div>
+          <span class="badge ${jc}">${jl}</span>
+        </div>`;
+      }).join('') : '<div class="empty" style="padding:16px 0">予測なし</div>'}
+    </div>
+  `;
+
+  // 戻るボタン
+  document.getElementById('btn-back-overview').addEventListener('click', function() {
+    currentMachineId = null;
+    renderDashboard();
+  });
+
+  // チップの active を更新
+  document.querySelectorAll('.machine-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.id === mid);
+  });
+
+  // グラフ描画
+  if (days.length>=2) renderSpinChart('chart-spin', days.slice(-7));
+  if (days.length>=2) renderHitsChart('chart-hits', days.slice(-7));
+  if (days.length>=1) renderSlumpChart('chart-slump', days.slice(-3));
+}
+
+function renderMiniPredList(mid) {
+  const ps = db.predictions.filter(p=>p.machineId===mid).slice(-3).reverse();
+  if (!ps.length) return '<div class="empty" style="padding:16px 0">予測なし</div>';
+  return ps.map(p => {
+    const [jc, jl] = judgeInfo(p.judge);
+    return `<div class="list-item">
+      <div class="list-item-main">
+        <div class="list-item-title">${p.date} / ${PRED_LABELS[p.type]||p.type}</div>
+        <div class="list-item-sub">${esc(p.value)}</div>
+      </div>
+      <span class="badge ${jc}">${jl}</span>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// RENDER: PREDICT
+// ================================================================
+function renderPredict() {
+  const ps  = [...db.predictions].reverse();
+  const el  = document.getElementById('pred-list');
+  if (!ps.length) { el.innerHTML = '<div class="empty">予測なし</div>'; return; }
+  el.innerHTML = ps.map(p => {
+    const m  = db.machines.find(m=>m.id===p.machineId);
+    const [jc, jl] = judgeInfo(p.judge);
+    const ml = m ? `${esc(m.storeName||'')} / ${esc(m.model)} ${esc(m.no)}番` : '?';
+    return `<div class="pred-card">
+      <div class="row-between" style="margin-bottom:6px">
+        <span class="pred-type-label">${PRED_LABELS[p.type]||p.type}</span>
+        <span class="badge ${jc}">${jl}</span>
+      </div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(p.value)}</div>
+      <div class="text-xs">${ml} / ${p.date}</div>
+      ${p.memo ? `<div class="text-sm mt8">${esc(p.memo)}</div>` : ''}
+      ${p.result ? `<div class="pred-result-row"><span class="text-xs">実績:</span><b>${esc(p.result)}</b></div>` : ''}
+      ${!p.judge ? `<button class="sm" data-result-id="${p.id}" style="margin-top:12px">結果を入力</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// RENDER: VERIFY
+// ================================================================
+function renderVerify() {
+  const all   = db.predictions;
+  const done  = all.filter(p=>p.judge);
+  const hits  = done.filter(p=>p.judge==='hit');
+  const parts = done.filter(p=>p.judge==='partial');
+  const score = done.length ? Math.round((hits.length+parts.length*.5)/done.length*100) : 0;
+  set('v-total', String(all.length));
+  set('v-done',  String(done.length));
+  set('v-rate',  done.length ? `${score}%` : '-');
+  document.getElementById('v-rate').className = 'stat-val ' + (score>=60?'pos':score>=40?'gold':'neg');
+  document.getElementById('v-bar').style.width = score + '%';
+  const types = [...new Set(done.map(p=>p.type))];
+  document.getElementById('v-type-breakdown').innerHTML = types.map(t => {
+    const td=done.filter(p=>p.type===t), th=td.filter(p=>p.judge==='hit'), tp=td.filter(p=>p.judge==='partial');
+    const s=td.length?Math.round((th.length+tp.length*.5)/td.length*100):0;
+    return `<div class="row-between text-sm" style="margin-bottom:6px"><span>${PRED_LABELS[t]||t}</span><span>${th.length+tp.length}/${td.length}（${s}%）</span></div>`;
+  }).join('');
+  const pending = all.filter(p=>!p.judge).sort((a,b)=>b.date<a.date?-1:1);
+  document.getElementById('verify-pending-list').innerHTML = pending.length
+    ? pending.map(p => {
+        const m = db.machines.find(m=>m.id===p.machineId);
+        const ml = m ? `${esc(m.storeName||'')} / ${esc(m.model)} ${esc(m.no)}番` : '?';
+        return `<div class="list-item">
+          <div class="list-item-main">
+            <div class="list-item-title">${ml} / ${p.date}</div>
+            <div class="list-item-sub">${PRED_LABELS[p.type]||p.type}: ${esc(p.value)}</div>
+          </div>
+          <button class="sm" data-result-id="${p.id}">入力</button>
+        </div>`;
+      }).join('')
+    : '<div class="empty">すべて完了</div>';
+  document.getElementById('verify-done-list').innerHTML = done.length
+    ? [...done].reverse().map(p => {
+        const m  = db.machines.find(m=>m.id===p.machineId);
+        const ml = m ? `${esc(m.storeName||'')} / ${esc(m.model)} ${esc(m.no)}番` : '?';
+        const [jc, jl] = judgeInfo(p.judge);
+        return `<div class="list-item">
+          <div class="list-item-main">
+            <div class="list-item-title">${ml} / ${p.date}</div>
+            <div class="list-item-sub">${esc(p.value)} → ${esc(p.result||'')}</div>
+          </div>
+          <span class="badge ${jc}">${jl}</span>
+        </div>`;
+      }).join('')
+    : '<div class="empty">まだなし</div>';
+}
+
+function judgeInfo(judge) {
+  if (judge==='hit')     return ['green', '✓ 的中'];
+  if (judge==='miss')    return ['red',   '✗ 外れ'];
+  if (judge==='partial') return ['gold',  '△ 部分'];
+  return ['muted', '未検証'];
+}
+
+// ================================================================
+// RENDER: MACHINES（店舗グループ）
+// ================================================================
+function renderMachines() {
+  const el = document.getElementById('machine-list-manage');
+  if (!db.machines.length) {
+    el.innerHTML = '<div class="empty">台なし<br>上の「＋」ボタンから追加してください</div>';
+    return;
+  }
+  el.innerHTML = getStoreNames().map(store => {
+    const ms   = db.machines.filter(m=>(m.storeName||'未設定')===store);
+    const rows = ms.map(m => {
+      const days = getMachineDays(m.id);
+      const last = days.length ? days[days.length-1].date : null;
+      // data-id を button に直接付与 → イベントデリゲーションで取得
+      return `<div class="machine-row">
+        <div class="machine-row-info">
+          <div class="machine-row-model">
+            ${esc(m.model)} <span class="machine-row-no">${esc(m.no)}番</span>
+          </div>
+          <div class="machine-row-sub">
+            データ ${days.length}日分${last?' &nbsp;|&nbsp; 最終: '+last:''}
+          </div>
+          ${m.border ? `<div style="font-size:11px;color:var(--teal);margin-top:3px">ボーダー ${m.border}/千円${m.compLimit?' / コンプ上限 '+m.compLimit.toLocaleString():''}</div>` : `<div style="font-size:11px;color:var(--text3);margin-top:3px">ボーダー未設定</div>`}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <button class="edit-border-btn" data-id="${m.id}" style="
+            flex:1;background:#0a1a20;color:var(--teal);border:none;border-left:1px solid #1a3040;
+            font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;
+            -webkit-user-select:none;user-select:none;pointer-events:auto;
+            display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;
+            min-width:56px;padding:0;
+          ">
+            <span style="font-size:16px;pointer-events:none">✏️</span>
+            <span style="pointer-events:none">編集</span>
+          </button>
+          <button class="del-btn" data-id="${m.id}">
+            <span style="font-size:18px">🗑</span>
+            <span>削除</span>
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="store-group">
+      <div class="store-header">
+        <div class="store-name">🏬 ${esc(store)}</div>
+        <div class="store-count">${ms.length}台</div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// SELECTS
+// ================================================================
+function populateSelects() {
+  ['input-machine-sel','pred-machine-sel'].forEach(sid => {
+    const el  = document.getElementById(sid);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">-- 台を選択 --</option>';
+    getStoreNames().forEach(store => {
+      const ms = db.machines.filter(m=>(m.storeName||'未設定')===store);
+      if (!ms.length) return;
+      const g = document.createElement('optgroup');
+      g.label = store;
+      ms.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = `${m.no}番 ${m.model}`;
+        g.appendChild(o);
+      });
+      el.appendChild(g);
+    });
+    if (cur) el.value = cur;
+  });
+  const dd = document.getElementById('input-date');
+  if (dd && !dd.value) dd.value = todayStr();
+  const pd = document.getElementById('pred-date');
+  if (pd && !pd.value) { const t=new Date(); t.setDate(t.getDate()+1); pd.value=t.toISOString().slice(0,10); }
+}
+
+// ================================================================
+// TABS / MODAL / TOAST / RENDER ALL
+// ================================================================
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  const pg = document.getElementById(el.dataset.page);
+  if (pg) pg.classList.add('active');
+  renderAll();
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
+  if (id === 'exportModal') {
+    const et = document.getElementById('export-text');
+    if (et) et.value = JSON.stringify(db, null, 2);
+  }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+  // deleteConfirmModal を閉じた時は必ず pendingDeleteId をリセット
+  if (id === 'deleteConfirmModal') pendingDeleteId = null;
+}
+
+function copyExport() {
+  const t = document.getElementById('export-text');
+  t.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  toast('コピーしました');
+}
+
+function importData() {
+  try {
+    const raw    = document.getElementById('import-text').value.trim();
+    const parsed = JSON.parse(raw);
+    if (!parsed.machines) throw new Error();
+    parsed.machines = parsed.machines.map(m=>({storeName:'未設定',favorite:false,...m}));
+    db = parsed;
+    saveDB();
+    closeModal('importModal');
+    set('import-text','');
+    currentMachineId = null;
+    renderAll();
+    toast('データを読み込みました');
+  } catch(e) { toast('JSONの形式が正しくありません'); }
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2400);
+}
+
+function renderAll() {
+  // undo ボタンの表示切り替え
+  const undoBtn = document.getElementById('btn-undo');
+  if (undoBtn) undoBtn.style.display = _undoSnapshot ? 'inline-flex' : 'none';
+
+  try { renderDashboard(); }    catch(e) { console.error('renderDashboard error:', e); }
+  try { populateSelects(); }    catch(e) { console.error('populateSelects error:', e); }
+  try { renderPredict(); }      catch(e) { console.error('renderPredict error:', e); }
+  try { renderVerify(); }       catch(e) { console.error('renderVerify error:', e); }
+  try { renderMachines(); }     catch(e) { console.error('renderMachines error:', e); }
+}
+
+// ── 短縮ヘルパー ──
+function v(id)  { const e=document.getElementById(id); return e?e.value.trim():''; }
+function set(id, val) { const e=document.getElementById(id); if(e) e.value=val; }
+function n(id)  { return parseInt(v(id))||0; }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+// ================================================================
+// INIT
+// ================================================================
+
+// iPhoneのScript errorを確実にキャッチ
+window.onerror = function(msg, src, line, col, err) {
+  console.error('JS ERROR:', msg, 'line:'+line, 'col:'+col, err);
+  return false;
+};
+
+let _eventsbound = false; // 二重バインド防止フラグ
+
+try {
+  if (!_eventsbound) { bindEvents(); _eventsbound = true; }
+  renderAll();
+} catch(e) {
+  console.error('INIT ERROR:', e);
+  try {
+    localStorage.removeItem(LS_KEY);
+    db = { machines:[], dailyData:{}, predictions:[] };
+    // bindEventsは再呼び出しせず、renderAllだけリトライ
+    renderAll();
+    console.warn('localStorage cleared and restarted');
+  } catch(e2) {
+    console.error('RECOVERY FAILED:', e2);
+  }
+}
+</script>
+</body>
+</html>
