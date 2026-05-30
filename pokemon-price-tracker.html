@@ -311,6 +311,29 @@
   </div>
 </div>
 
+<!-- ── 編集モーダル ── -->
+<div class="modal-overlay" id="modalEdit">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">編集</span>
+      <button class="modal-close" data-close="modalEdit" style="touch-action:manipulation">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">名前</label>
+        <input class="form-input" type="text" id="editItemName" placeholder="名前">
+      </div>
+      <div class="form-group">
+        <label class="form-label">発売日（任意）</label>
+        <input class="form-input" type="date" id="editItemReleaseDate">
+      </div>
+      <input type="hidden" id="editItemId">
+      <button class="btn-primary" id="btnSaveEdit" style="touch-action:manipulation">保存する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── 管理モーダル ── -->
 <div class="modal-overlay" id="modalManage">
   <div class="modal">
@@ -433,14 +456,7 @@ function renderMain() {
     const icon = currentTab === 'box' ? '📦' : '🎴';
     const latestStr = st.latest != null ? st.latest.toLocaleString()+'円' : '未記録';
     const highStr = st.high != null ? '最高 '+st.high.toLocaleString()+'円' : '';
-    const subParts = [];
-    if (item.releaseDate) {
-      subParts.push('発売 ' + item.releaseDate.replace(/-/g, '/'));
-      const elapsed = Math.floor((Date.now() - new Date(item.releaseDate)) / 86400000);
-      if (elapsed >= 0) subParts.push(elapsed + '日経過');
-    }
-    if (highStr) subParts.push(highStr);
-    const subStr = subParts.length ? subParts.join(' · ') : '記録なし';
+    const subStr = highStr || '記録なし';
     html += `<div class="card-row" data-id="${escHtml(item.id || item.name)}">
       <div class="card-row-icon">${icon}</div>
       <div class="card-row-body">
@@ -540,7 +556,7 @@ document.getElementById('btnSaveItem').addEventListener('click', () => {
   if (!name) { showToast('名前を入力してください'); return; }
   const releaseDate = document.getElementById('addItemReleaseDate').value || null;
   const id = 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-  state[currentTab].push({ id, name, releaseDate, prices: [] });
+  state[currentTab].push({ id, name, releaseDate, prices: [], meta: {} });
   save(); renderMain(); closeModal('modalAddItem');
   showToast('追加しました ✓');
 }, { passive: true });
@@ -573,7 +589,19 @@ function renderDetail(item, idx) {
     diffBadge = `<span class="price-diff ${cls}" style="font-size:13px">${arrow} ${Math.abs(st.diff).toLocaleString()}円（前回比）</span>`;
   }
 
+  // 発売日・経過日数
+  let releaseBadge = '';
+  if (item.releaseDate) {
+    const elapsed = Math.floor((Date.now() - new Date(item.releaseDate)) / 86400000);
+    const elapsedStr = elapsed >= 0 ? '発売から ' + elapsed + '日経過' : '発売前';
+    releaseBadge = `<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <span style="font-size:13px;background:var(--surface2);padding:5px 10px;border-radius:20px;color:var(--text2);">📅 発売日：${item.releaseDate.replace(/-/g,'/')}</span>
+      <span style="font-size:13px;background:var(--surface2);padding:5px 10px;border-radius:20px;color:var(--text2);">${elapsedStr}</span>
+    </div>`;
+  }
+
   body.innerHTML = `
+    ${releaseBadge}
     <div class="stat-grid">
       <div class="stat-card">
         <div class="stat-label">最新</div>
@@ -811,6 +839,32 @@ function cancelDelete() {
   if (area) area.style.display = 'none';
 }
 
+// ── 編集 ──
+function openEditModal(id) {
+  const item = state[currentTab].find(x => (x.id || x.name) === id);
+  if (!item) return;
+  document.getElementById('editItemId').value = id;
+  document.getElementById('editItemName').value = item.name;
+  document.getElementById('editItemReleaseDate').value = item.releaseDate || '';
+  openModal('modalEdit');
+}
+
+document.getElementById('btnSaveEdit').addEventListener('click', function() {
+  const id = document.getElementById('editItemId').value;
+  const newName = document.getElementById('editItemName').value.trim();
+  const newRelease = document.getElementById('editItemReleaseDate').value || null;
+  if (!newName) { showToast('名前を入力してください'); return; }
+  const item = state[currentTab].find(x => (x.id || x.name) === id);
+  if (!item) return;
+  item.name = newName;
+  item.releaseDate = newRelease;
+  // meta: 将来の拡張フィールド用（互換性を維持しつつ保持）
+  if (!item.meta) item.meta = {};
+  save(); renderMain(); renderManageList();
+  closeModal('modalEdit');
+  showToast('更新しました ✓');
+}, { passive: true });
+
 // ── バックアップ ──
 function exportData() {
   try {
@@ -870,6 +924,9 @@ const INITIAL_DATA = {"box": [{"name": "ブラックボルト", "prices": [{"dat
 // 初期データを常にベースにマージ（削除されたアイテムも復元、ユーザー追加分は保持）
 function ensureId(item) {
   if (!item.id) item.id = 'item_' + Math.random().toString(36).slice(2, 9) + '_' + item.name.slice(0,4);
+  if (!item.meta) item.meta = {};           // 将来拡張フィールド（後方互換）
+  if (!item.releaseDate) item.releaseDate = null;
+  if (!item.prices) item.prices = [];
   return item;
 }
 
