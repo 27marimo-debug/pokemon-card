@@ -100,13 +100,13 @@ html, body {
 /* ── カード ── */
 .card {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 18px;
-  margin-bottom: 14px;
+  border-radius: var(--r); padding: 18px 16px;
+  margin-bottom: 16px;
 }
 .card-label {
   font-size: 11px; font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: var(--text3);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 /* ── 台セレクタチップ ── */
@@ -142,15 +142,15 @@ html, body {
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stat-box {
   background: var(--bg3); border-radius: var(--rs);
-  padding: 12px 8px; text-align: center;
+  padding: 14px 8px; text-align: center;
 }
 .stat-label {
   font-size: 11px; color: var(--text3);
-  margin-bottom: 6px; line-height: 1;
+  margin-bottom: 8px; line-height: 1.3;
 }
 .stat-val {
-  font-size: 20px; font-weight: 700;
-  font-variant-numeric: tabular-nums; line-height: 1.1;
+  font-size: 19px; font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1.2;
 }
 .stat-val.pos { color: var(--green); }
 .stat-val.neg { color: var(--red); }
@@ -214,10 +214,10 @@ button.danger:active { background: var(--red); color: #fff; }
 .btn-row button { flex: 1; }
 
 /* ── セパレータ ── */
-.sep { height: 1px; background: var(--border); margin: 18px 0; }
+.sep { height: 1px; background: var(--border); margin: 20px 0; }
 .section-title {
   font-size: 14px; font-weight: 700;
-  color: var(--text2); margin-bottom: 12px;
+  color: var(--text2); margin-bottom: 14px; margin-top: 4px;
 }
 
 /* ── バッジ ── */
@@ -235,20 +235,20 @@ button.danger:active { background: var(--red); color: #fff; }
 /* ── リスト ── */
 .list-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 0; border-bottom: 1px solid var(--border);
+  padding: 14px 0; border-bottom: 1px solid var(--border);
 }
 .list-item:last-child { border-bottom: none; }
 .list-item-main { flex: 1; min-width: 0; }
 .list-item-title {
-  font-size: 14px; font-weight: 600; margin-bottom: 3px;
+  font-size: 14px; font-weight: 600; margin-bottom: 4px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.list-item-sub { font-size: 12px; color: var(--text3); line-height: 1.4; }
+.list-item-sub { font-size: 12px; color: var(--text3); line-height: 1.5; }
 
 /* ── 当たり履歴 ── */
 .hit-entry {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px;
 }
 .hit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
 
@@ -389,6 +389,7 @@ button.danger:active { background: var(--red); color: #fff; }
 <!-- ヘッダー -->
 <div id="header">
   <h1>台<span>DATA</span>トラッカー</h1>
+  <button class="hdr-btn" id="btn-undo" style="display:none;background:#2a1a00;color:#f0b840;border-color:#5a3a00">↩ 戻す</button>
   <button class="hdr-btn" id="btn-export">出力</button>
   <button class="hdr-btn" id="btn-import">入力</button>
 </div>
@@ -551,6 +552,15 @@ button.danger:active { background: var(--red); color: #fff; }
       <span class="form-label">台番号</span>
       <input type="text" class="form-input" id="new-machine-no" placeholder="例: 1133" autocomplete="off">
     </div>
+    <div class="form-col" style="margin-bottom:12px">
+      <span class="form-label">貸玉レート</span>
+      <select class="form-input" id="new-rate">
+        <option value="4">4円</option>
+        <option value="2">2円</option>
+        <option value="1">1円</option>
+        <option value="0.5">0.5円</option>
+      </select>
+    </div>
     <!-- ボーダー情報（任意） -->
     <div style="background:var(--bg3);border-radius:var(--rs);padding:12px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:10px">ボーダー参考値（任意）</div>
@@ -617,7 +627,35 @@ button.danger:active { background: var(--red); color: #fff; }
   </div>
 </div>
 
-<!-- ── モーダル: 結果入力 ── -->
+<!-- ── モーダル: 日別データ編集 ── -->
+<div class="modal-bg" id="dailyEditModal">
+  <div class="modal">
+    <div class="modal-title">日別データを編集</div>
+    <div id="daily-edit-header" class="text-sm" style="margin-bottom:14px;color:var(--teal)"></div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">大当り回数</span><input type="number" class="form-input" id="de-total-hit" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">初当り</span><input type="number" class="form-input" id="de-first-hit" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">総回転数</span><input type="number" class="form-input" id="de-total-spin" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><span class="form-label">現ハマり回転</span><input type="number" class="form-input" id="de-current-start" placeholder="0"></div>
+      <div class="form-col"><span class="form-label">最大出玉</span><input type="number" class="form-input" id="de-max-ball" placeholder="0"></div>
+    </div>
+    <div class="form-col" style="margin-bottom:14px">
+      <span class="form-label">前日最終回転（任意）</span>
+      <input type="number" class="form-input" id="de-prev-last-spin" placeholder="0">
+    </div>
+    <input type="hidden" id="de-machine-id">
+    <input type="hidden" id="de-date">
+    <div class="btn-row">
+      <button id="btn-save-daily-edit">保存する</button>
+      <button class="secondary" id="btn-cancel-daily-edit">キャンセル</button>
+    </div>
+    <div style="margin-top:12px">
+      <button class="danger" id="btn-delete-daily">この日のデータを削除</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="resultModal">
   <div class="modal">
     <div class="modal-title">実際の結果を入力</div>
@@ -727,6 +765,12 @@ function esc(s) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// 貸玉レートのラベル（未設定は4円扱い）
+function rateLabel(m) {
+  const r = m && m.rate != null ? m.rate : 4;
+  return `【${r}円】`;
+}
+
 // ================================================================
 // STATE
 // ================================================================
@@ -748,6 +792,7 @@ function bindEvents() {
     });
 
     // ヘッダー
+    on('btn-undo',   'click', undoLast);
     on('btn-export', 'click', () => openModal('exportModal'));
     on('btn-import', 'click', () => openModal('importModal'));
 
@@ -760,27 +805,44 @@ function bindEvents() {
       if (id) { currentMachineId = id; renderDashboard(); }
     });
 
+    // ダッシュボードコンテンツ内の日別編集ボタン（デリゲーション）
+    var dashContent = document.getElementById('dashboard-content');
+    if (dashContent) {
+      dashContent.addEventListener('touchend', function(e) {
+        var btn = e.target.closest('.daily-edit-btn');
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        openDailyEdit(btn.dataset.mid, btn.dataset.date);
+      }, { passive: false });
+      dashContent.addEventListener('click', function(e) {
+        var btn = e.target.closest('.daily-edit-btn');
+        if (!btn) return;
+        openDailyEdit(btn.dataset.mid, btn.dataset.date);
+      });
+    }
+
     // 台管理ページの追加ボタン
     on('btn-open-add-machine', 'click', () => openModal('addMachineModal'));
 
-    // 台管理リスト: 削除・ボーダー編集を1つのデリゲーションで管理（重複宣言バグを修正）
-    const machineList = document.getElementById('machine-list-manage');
+    // 台管理リスト: 削除・ボーダー編集（touchend/click 二重発火対策済み）
+    var machineList = document.getElementById('machine-list-manage');
     if (machineList) {
+      var _tappedByTouch = false;
       function handleMachineListTap(e) {
-        // 削除ボタン
-        const delBtn = e.target.closest('.del-btn');
+        if (e.type === 'click' && _tappedByTouch) { _tappedByTouch = false; return; }
+        if (e.type === 'touchend') _tappedByTouch = true;
+        var delBtn = e.target.closest('.del-btn');
         if (delBtn) {
           e.preventDefault(); e.stopPropagation();
-          const id = delBtn.dataset.id;
+          var id = delBtn.dataset.id;
           if (id) openDeleteConfirm(id);
           return;
         }
-        // ボーダー編集ボタン
-        const editBtn = e.target.closest('.edit-border-btn');
+        var editBtn = e.target.closest('.edit-border-btn');
         if (editBtn) {
           e.preventDefault(); e.stopPropagation();
-          const id = editBtn.dataset.id;
-          if (id) openBorderEdit(id);
+          var id2 = editBtn.dataset.id;
+          if (id2) openBorderEdit(id2);
           return;
         }
       }
@@ -797,8 +859,7 @@ function bindEvents() {
       closeModal('deleteConfirmModal');
     });
     on('btn-cancel-delete', 'click', () => {
-      pendingDeleteId = null;
-      closeModal('deleteConfirmModal');
+      closeModal('deleteConfirmModal'); // closeModal 内で pendingDeleteId リセット済み
     });
 
     // 台追加モーダル
@@ -809,15 +870,20 @@ function bindEvents() {
     on('btn-save-border',   'click', saveBorderEdit);
     on('btn-cancel-border', 'click', () => closeModal('borderEditModal'));
 
+    // 日別データ編集モーダル
+    on('btn-save-daily-edit',   'click', saveDailyEdit);
+    on('btn-cancel-daily-edit', 'click', () => closeModal('dailyEditModal'));
+    on('btn-delete-daily',      'click', deleteDailyData);
+
     // データ入力フォーム
     on('btn-add-hit',    'click', addHitEntry);
     on('btn-save-input', 'click', saveInputData);
 
     // 当たり履歴削除
-    const hitListEl = document.getElementById('hit-list-input');
+    var hitListEl = document.getElementById('hit-list-input');
     if (hitListEl) {
       function handleHitDel(e) {
-        const btn = e.target.closest('[data-hit-del]');
+        var btn = e.target.closest('[data-hit-del]');
         if (!btn) return;
         e.preventDefault();
         hitEntries.splice(parseInt(btn.dataset.hitDel), 1);
@@ -828,19 +894,19 @@ function bindEvents() {
     }
 
     // 予測フォーム
-    const predSel = document.getElementById('pred-machine-sel');
+    var predSel = document.getElementById('pred-machine-sel');
     if (predSel) predSel.addEventListener('change', updateAutoAnalysis);
     on('btn-save-pred', 'click', savePrediction);
 
     // 結果入力ボタン（予測リスト + 検証リスト）
     function handleResultOpen(e) {
-      const btn = e.target.closest('[data-result-id]');
+      var btn = e.target.closest('[data-result-id]');
       if (!btn) return;
       e.preventDefault();
       openResultModal(btn.dataset.resultId);
     }
     ['pred-list', 'verify-pending-list'].forEach(function(elId) {
-      const el = document.getElementById(elId);
+      var el = document.getElementById(elId);
       if (el) {
         el.addEventListener('touchend', handleResultOpen, { passive: false });
         el.addEventListener('click',    handleResultOpen);
@@ -853,17 +919,17 @@ function bindEvents() {
     // 累積参考値リアルタイム更新
     function updateCumulativePreview() {
       try {
-        const prevEl  = document.getElementById('inp-prev-last-spin');
-        const totalEl = document.getElementById('inp-total-spin');
-        const dispEl  = document.getElementById('cumulative-spin-preview');
+        var prevEl  = document.getElementById('inp-prev-last-spin');
+        var totalEl = document.getElementById('inp-total-spin');
+        var dispEl  = document.getElementById('cumulative-spin-preview');
         if (!prevEl || !totalEl || !dispEl) return;
-        const prev  = parseInt(prevEl.value)  || 0;
-        const total = parseInt(totalEl.value) || 0;
+        var prev  = parseInt(prevEl.value)  || 0;
+        var total = parseInt(totalEl.value) || 0;
         dispEl.textContent = (prev > 0 && total > 0) ? (prev + total).toLocaleString() + ' 回転' : '—';
       } catch(e) { console.error('cumulative preview error', e); }
     }
     ['inp-prev-last-spin', 'inp-total-spin'].forEach(function(id) {
-      const el = document.getElementById(id);
+      var el = document.getElementById(id);
       if (el) el.addEventListener('input', updateCumulativePreview);
     });
 
@@ -873,10 +939,10 @@ function bindEvents() {
     on('btn-do-import',    'click', importData);
     on('btn-close-import', 'click', () => closeModal('importModal'));
 
-    // モーダル背景タップで閉じる
+    // モーダル背景タップで閉じる（closeModal 経由で pendingDeleteId も自動リセット）
     document.querySelectorAll('.modal-bg').forEach(function(bg) {
       bg.addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('open');
+        if (e.target === this) closeModal(this.id);
       });
     });
 
@@ -916,13 +982,15 @@ function addMachine() {
   const border    = parseFloat(document.getElementById('new-border').value)    || null;
   const highSpin  = parseFloat(document.getElementById('new-high-spin').value) || null;
   const compLimit = parseInt(document.getElementById('new-comp-limit').value)  || null;
+  const rate      = parseFloat(document.getElementById('new-rate').value)      || 4;
   const newM = {
     id: String(Date.now()),
     storeName: store, model, no,
     favorite: false,
-    border,      // ボーダー回転数(/千円)
-    highSpin,    // 高稼働目安(/千円)
-    compLimit,   // コンプ上限出玉
+    rate,        // 貸玉レート（未設定は4円として扱う）
+    border,
+    highSpin,
+    compLimit,
     addedAt: new Date().toISOString()
   };
   db.machines.push(newM);
@@ -930,6 +998,7 @@ function addMachine() {
   closeModal('addMachineModal');
   ['new-store-name','new-model-name','new-machine-no','new-border','new-high-spin','new-comp-limit']
     .forEach(id => set(id,''));
+  document.getElementById('new-rate').value = '4'; // レートをデフォルトに戻す
   renderAll();
   toast('台を追加しました');
 }
@@ -958,33 +1027,123 @@ function saveBorderEdit() {
   toast('ボーダー情報を更新しました');
 }
 
-function doDeleteMachine(id) {
-  // ── 削除処理の核心 ──
-  // 1. machines 配列から除去
-  const before = db.machines.length;
-  db.machines = db.machines.filter(m => m.id !== id);
-  console.log(`deleteMachine: ${before} -> ${db.machines.length} (removed id=${id})`);
+// ================================================================
+// 日別データ 編集 / 削除
+// ================================================================
+function openDailyEdit(machineId, date) {
+  const key  = getDailyKey(machineId, date);
+  const data = db.dailyData[key];
+  if (!data) { toast('データが見つかりません'); return; }
+  const m = db.machines.find(m => m.id === machineId);
+  document.getElementById('daily-edit-header').textContent =
+    `${m ? m.model+' '+m.no+'番' : ''} / ${date}`;
+  document.getElementById('de-machine-id').value    = machineId;
+  document.getElementById('de-date').value          = date;
+  document.getElementById('de-total-hit').value     = data.totalHit     || '';
+  document.getElementById('de-first-hit').value     = data.firstHit     || '';
+  document.getElementById('de-total-spin').value    = data.totalSpin    || '';
+  document.getElementById('de-current-start').value = data.currentStart || '';
+  document.getElementById('de-max-ball').value      = data.maxBall      || '';
+  document.getElementById('de-prev-last-spin').value= data.prevLastSpin || '';
+  openModal('dailyEditModal');
+}
 
-  // 2. 日別データを削除
-  const prefix = id + '__';
-  Object.keys(db.dailyData).forEach(k => {
-    if (k.startsWith(prefix)) delete db.dailyData[k];
-  });
-
-  // 3. 予測データを削除
-  db.predictions = db.predictions.filter(p => p.machineId !== id);
-
-  // 4. currentMachineId をリセット
-  if (currentMachineId === id) {
-    currentMachineId = db.machines.length > 0 ? db.machines[0].id : null;
-  }
-
-  // 5. 保存
+function saveDailyEdit() {
+  const machineId = document.getElementById('de-machine-id').value;
+  const date      = document.getElementById('de-date').value;
+  if (!machineId || !date) return;
+  const key  = getDailyKey(machineId, date);
+  const prev = db.dailyData[key] || {};
+  const prevLastSpin = parseInt(document.getElementById('de-prev-last-spin').value) || 0;
+  const totalSpin    = parseInt(document.getElementById('de-total-spin').value) || 0;
+  db.dailyData[key] = {
+    ...prev, // hits・slumpPoints などは保持
+    totalHit:     parseInt(document.getElementById('de-total-hit').value)      || 0,
+    firstHit:     parseInt(document.getElementById('de-first-hit').value)      || 0,
+    totalSpin,
+    currentStart: parseInt(document.getElementById('de-current-start').value)  || 0,
+    maxBall:      parseInt(document.getElementById('de-max-ball').value)        || 0,
+    prevLastSpin,
+    cumulativeSpin: prevLastSpin > 0 ? prevLastSpin + totalSpin : null,
+    updatedAt: new Date().toISOString()
+  };
   saveDB();
-
-  // 6. 全画面を再描画
+  closeModal('dailyEditModal');
   renderAll();
-  toast('台を削除しました');
+  toast('データを更新しました');
+}
+
+function deleteDailyData() {
+  const machineId = document.getElementById('de-machine-id').value;
+  const date      = document.getElementById('de-date').value;
+  if (!machineId || !date) return;
+  const key = getDailyKey(machineId, date);
+  takeUndoSnapshot(`日別削除: ${date}`);
+  delete db.dailyData[key];
+  saveDB();
+  closeModal('dailyEditModal');
+  renderAll();
+  toast(date + ' のデータを削除しました（元に戻すボタンあり）');
+}
+// ================================================================
+// Undo バッファ（1世代）
+// ================================================================
+let _undoSnapshot = null; // { db: deepcopy, label: string }
+
+function takeUndoSnapshot(label) {
+  try {
+    _undoSnapshot = { db: JSON.parse(JSON.stringify(db)), label };
+  } catch(e) { console.error('takeUndoSnapshot error:', e); }
+}
+
+function undoLast() {
+  if (!_undoSnapshot) { toast('元に戻すデータがありません'); return; }
+  db = _undoSnapshot.db;
+  _undoSnapshot = null;
+  currentMachineId = null;
+  saveDB();
+  renderAll();
+  toast('元に戻しました');
+}
+
+// ================================================================
+// 台削除（undo対応）
+// ================================================================
+function doDeleteMachine(id) {
+  try {
+    // Undo 用スナップショットを取得
+    const m = db.machines.find(m => m.id === id);
+    takeUndoSnapshot(`台削除: ${m ? m.model + ' ' + m.no + '番' : id}`);
+
+    // 1. machines 配列から除去
+    const before = db.machines.length;
+    db.machines = db.machines.filter(m => m.id !== id);
+    console.log(`deleteMachine: ${before} -> ${db.machines.length} (removed id=${id})`);
+
+    // 2. 日別データを削除
+    const prefix = id + '__';
+    Object.keys(db.dailyData).forEach(k => {
+      if (k.startsWith(prefix)) delete db.dailyData[k];
+    });
+
+    // 3. 予測データを削除
+    db.predictions = db.predictions.filter(p => p.machineId !== id);
+
+    // 4. currentMachineId をリセット
+    if (currentMachineId === id) {
+      currentMachineId = db.machines.length > 0 ? db.machines[0].id : null;
+    }
+
+    // 5. 保存
+    saveDB();
+
+    // 6. 全画面を再描画
+    renderAll();
+    toast('台を削除しました（元に戻すボタンあり）');
+  } catch(e) {
+    console.error('doDeleteMachine error:', e);
+    toast('削除中にエラーが発生しました');
+  }
 }
 
 // ================================================================
@@ -1094,12 +1253,24 @@ function savePrediction() {
   const mid  = document.getElementById('pred-machine-sel').value;
   const date = v('pred-date');
   const type = document.getElementById('pred-type').value;
-  const val  = v('pred-value');
+  const raw  = v('pred-value');
   const memo = v('pred-memo');
-  if (!mid||!date||!val) { toast('必須項目を入力してください'); return; }
+  if (!mid||!date||!raw) { toast('必須項目を入力してください'); return; }
+
+  // 数値型予測は Number 変換、文字列型はそのまま
+  const numericTypes = ['hit_count'];
+  const numTry = Number(raw);
+  const value  = (numericTypes.includes(type) && !isNaN(numTry) && raw !== '')
+    ? numTry
+    : raw;
+  const valueType = (typeof value === 'number') ? 'number' : 'string';
+
   db.predictions.push({
     id: String(Date.now()),
-    machineId: mid, date, type, value: val, memo,
+    machineId: mid, date, type,
+    value,       // number or string
+    valueType,   // 型を明示保存
+    memo,
     result: null, resultMemo: '', judge: null,
     createdAt: new Date().toISOString()
   });
@@ -1223,131 +1394,136 @@ function renderSlumpChart(id, days) {
 
 // ================================================================
 // 台状態推定・分析タグ生成
+// ※ すべての参照を null/undefined セーフに保護
 // ================================================================
 function estimateStatus(days, machine) {
-  if (!days.length) return null;
-  const lat  = days[days.length-1];
+  try {
+    if (!days || !days.length) return null;
+    const lat = days[days.length - 1];
+    if (!lat) return null;
 
-  // ── 基本指標 ──
-  const interval = lat.firstHit > 0 ? Math.round(lat.totalSpin / lat.firstHit) : null;
-  const cumSpin  = lat.cumulativeSpin || (lat.prevLastSpin > 0 ? lat.prevLastSpin + lat.totalSpin : null);
-  const noHitToday  = lat.totalSpin > 0 && lat.totalHit === 0;
-  const maxBallHigh = lat.maxBall > 3000;
-  const currentLow  = lat.currentStart < 300;
-  const drainSuspect = maxBallHigh && currentLow;
+    // フィールドを安全に取得（未定義は 0 扱い）
+    const totalSpin    = Number(lat.totalSpin)    || 0;
+    const totalHit     = Number(lat.totalHit)     || 0;
+    const firstHit     = Number(lat.firstHit)     || 0;
+    const maxBall      = Number(lat.maxBall)       || 0;
+    const currentStart = Number(lat.currentStart) || 0;
+    const prevLastSpin = Number(lat.prevLastSpin) || 0;
+    const cumSpin      = lat.cumulativeSpin
+      || (prevLastSpin > 0 ? prevLastSpin + totalSpin : null);
 
-  // ── 数日トレンド ──
-  let firstHitTrend = null;
-  if (days.length >= 3) {
-    const recent = days.slice(-3).map(d=>d.firstHit);
-    firstHitTrend = recent[2]-recent[0] > 1 ? 'up' : recent[2]-recent[0] < -1 ? 'down' : 'flat';
-  }
+    // ── 基本指標 ──
+    const interval     = firstHit > 0 ? Math.round(totalSpin / firstHit) : null;
+    const noHitToday   = totalSpin > 0 && totalHit === 0;
+    const maxBallHigh  = maxBall > 3000;
+    const currentLow   = currentStart > 0 && currentStart < 300;
+    const drainSuspect = maxBallHigh && currentLow;
 
-  // ── ボーダー比較（machine引数があれば） ──
-  const m = machine || null;
-  let spinPerK   = null; // 千円あたり回転数（推定）
-  let borderJudge = null; // 'good'|'normal'|'low'
-  if (m && m.border && lat.totalSpin > 0) {
-    // 総回転数を参考にスタート値で比較（currentStart = 現在の千円あたり回転）
-    if (lat.currentStart > 0) {
-      spinPerK = lat.currentStart;
-      if (m.highSpin && spinPerK >= m.highSpin)       borderJudge = 'high';
-      else if (spinPerK >= m.border)                  borderJudge = 'good';
-      else if (spinPerK >= m.border * 0.9)            borderJudge = 'normal';
-      else                                            borderJudge = 'low';
+    // ── 数日トレンド ──
+    let firstHitTrend = null;
+    if (days.length >= 3) {
+      const recent = days.slice(-3).map(d => Number(d.firstHit) || 0);
+      const diff = recent[2] - recent[0];
+      firstHitTrend = diff > 1 ? 'up' : diff < -1 ? 'down' : 'flat';
     }
-  }
 
-  // ── コンプ圏判定 ──
-  let compJudge = null;
-  if (m && m.compLimit && lat.maxBall > 0) {
-    const ratio = lat.maxBall / m.compLimit;
-    if (ratio >= 0.9)       compJudge = 'comp_hit';   // コンプ級達成
-    else if (ratio >= 0.7)  compJudge = 'comp_near';  // コンプ圏接近
-    else if (ratio >= 0.5)  compJudge = 'comp_mid';   // 中間
-  }
-
-  // ── タグ生成（複数付与可） ──
-  const tags = []; // { label, color, key }
-
-  // 回転良好
-  if (borderJudge === 'high') {
-    tags.push({ key:'high_spin',  label:'🔥 高稼働',      color:'#f06060' });
-  } else if (borderJudge === 'good') {
-    tags.push({ key:'good_spin',  label:'✅ 回転良好',    color:'#5ef080' });
-  } else if (borderJudge === 'low') {
-    tags.push({ key:'low_spin',   label:'⚠️ 回転低め',    color:'#f0b840' });
-  }
-
-  // コンプ圏
-  if (compJudge === 'comp_hit') {
-    tags.push({ key:'comp_hit',   label:'🏆 コンプ級',    color:'#f0b840' });
-  } else if (compJudge === 'comp_near') {
-    tags.push({ key:'comp_near',  label:'💫 コンプ圏接近', color:'#7c6af7' });
-  }
-
-  // 放出台
-  if (drainSuspect) {
-    tags.push({ key:'drain',      label:'💸 放出→飲まれ', color:'#f0b840' });
-  } else if (maxBallHigh) {
-    tags.push({ key:'release',    label:'🎯 放出台傾向',   color:'#5ef0c0' });
-  }
-
-  // 深ハマり
-  if (noHitToday) {
-    tags.push({ key:'deep_hama',  label:'🔴 深ハマり',     color:'#f06060' });
-  }
-
-  // 波荒
-  if (interval !== null && interval > 300) {
-    tags.push({ key:'heavy',      label:'🌊 波荒',         color:'#f06060' });
-  }
-
-  // 好調
-  if (interval !== null && interval < 150 && lat.firstHit >= 3) {
-    tags.push({ key:'good',       label:'⭐ 好調',         color:'#5ef080' });
-  }
-
-  // 凹み
-  if (firstHitTrend === 'down' && lat.firstHit <= 1 && !noHitToday) {
-    tags.push({ key:'slump',      label:'📉 凹み',         color:'#f06060' });
-  }
-
-  // 反発候補
-  if (firstHitTrend === 'up' || (noHitToday && cumSpin && cumSpin > 600)) {
-    tags.push({ key:'rebound',    label:'📈 反発候補',     color:'#5ef0c0' });
-  }
-
-  // 急上昇挙動（最大出玉が前日比で大幅増）
-  if (days.length >= 2) {
-    const prev = days[days.length-2];
-    if (prev && lat.maxBall > prev.maxBall * 1.5 && lat.maxBall > 2000) {
-      tags.push({ key:'surge',    label:'🚀 急上昇挙動',   color:'#7c6af7' });
+    // ── ボーダー比較 ──
+    const m = machine || null;
+    let estimatedSpinPerK = null;
+    let borderJudge = null;
+    if (m && m.border && totalSpin > 0 && firstHit > 0) {
+      // 推定回転率 = (初当り数 / 総回転数) × ボーダー × 1000
+      estimatedSpinPerK = Math.round((firstHit / totalSpin) * Number(m.border) * 1000) / 10;
+      const border   = Number(m.border);
+      const highSpin = m.highSpin ? Number(m.highSpin) : null;
+      if (highSpin && estimatedSpinPerK >= highSpin) borderJudge = 'high';
+      else if (estimatedSpinPerK >= border)          borderJudge = 'good';
+      else if (estimatedSpinPerK >= border * 0.9)    borderJudge = 'normal';
+      else                                           borderJudge = 'low';
     }
+
+    // ── コンプ圏判定 ──
+    let compJudge = null;
+    if (m && m.compLimit && maxBall > 0) {
+      const ratio = maxBall / Number(m.compLimit);
+      if (ratio >= 0.9)      compJudge = 'comp_hit';
+      else if (ratio >= 0.7) compJudge = 'comp_near';
+      else if (ratio >= 0.5) compJudge = 'comp_mid';
+    }
+
+    // ── タグ生成 ──
+    const tags = [];
+
+    if      (borderJudge === 'high') tags.push({ key:'high_spin', label:'🔥 高稼働',      color:'#f06060' });
+    else if (borderJudge === 'good') tags.push({ key:'good_spin', label:'✅ 回転良好',    color:'#5ef080' });
+    else if (borderJudge === 'low')  tags.push({ key:'low_spin',  label:'⚠️ 回転低め',    color:'#f0b840' });
+
+    if      (compJudge === 'comp_hit')  tags.push({ key:'comp_hit',  label:'🏆 コンプ級',    color:'#f0b840' });
+    else if (compJudge === 'comp_near') tags.push({ key:'comp_near', label:'💫 コンプ圏接近', color:'#7c6af7' });
+
+    if      (drainSuspect) tags.push({ key:'drain',   label:'💸 放出→飲まれ', color:'#f0b840' });
+    else if (maxBallHigh)  tags.push({ key:'release', label:'🎯 放出台傾向',   color:'#5ef0c0' });
+
+    if (noHitToday) tags.push({ key:'deep_hama', label:'🔴 深ハマり', color:'#f06060' });
+
+    // ── 波荒スコア判定 ──
+    let waveScore = 0;
+    if (interval !== null && interval > 250)  waveScore++;
+    if (firstHit <= 1 && totalSpin > 400)     waveScore++;
+    if (maxBall > 4000 && currentStart > 0 && currentStart < 200) waveScore++;
+    if (days.length >= 2) {
+      const prev = days[days.length - 2];
+      if (prev) {
+        const prevMax = Number(prev.maxBall) || 0;
+        if (Math.abs(maxBall - prevMax) > 3000) waveScore++;
+      }
+    }
+    if (days.length >= 3) {
+      const recentH = days.slice(-3).map(d => Number(d.firstHit) || 0);
+      if (Math.max(...recentH) - Math.min(...recentH) >= 3) waveScore++;
+    }
+    if (waveScore >= 2) tags.push({ key:'heavy', label:'🌊 波荒', color:'#f06060' });
+
+    if (interval !== null && interval < 150 && firstHit >= 3)
+      tags.push({ key:'good', label:'⭐ 好調', color:'#5ef080' });
+
+    if (firstHitTrend === 'down' && firstHit <= 1 && !noHitToday)
+      tags.push({ key:'slump', label:'📉 凹み', color:'#f06060' });
+
+    if (firstHitTrend === 'up' || (noHitToday && cumSpin && cumSpin > 600))
+      tags.push({ key:'rebound', label:'📈 反発候補', color:'#5ef0c0' });
+
+    if (days.length >= 2) {
+      const prev = days[days.length - 2];
+      if (prev && maxBall > (Number(prev.maxBall) || 0) * 1.5 && maxBall > 2000)
+        tags.push({ key:'surge', label:'🚀 急上昇挙動', color:'#7c6af7' });
+    }
+
+    if (!tags.length) tags.push({ key:'normal', label:'— 通常', color:'#8890b8' });
+
+    const primary = tags[0];
+
+    // ── 根拠テキスト（m参照はすべて optional chaining で防御） ──
+    const reasons = [];
+    if (interval)          reasons.push(`平均当たり間隔: ${interval}回転`);
+    if (cumSpin)           reasons.push(`累積参考値: ${cumSpin.toLocaleString()}回転`);
+    if (estimatedSpinPerK) reasons.push(`推定回転率: ${estimatedSpinPerK}/千円（ボーダー参考: ${m?.border ?? '—'}）`);
+    if (maxBall)           reasons.push(`最大出玉: ${maxBall.toLocaleString()}${m?.compLimit ? ' / コンプ上限' + Number(m.compLimit).toLocaleString() : ''}`);
+    if (currentStart)      reasons.push(`現ハマり: ${currentStart}回転`);
+    if (drainSuspect)      reasons.push('最大出玉は大きいが現ハマり回転数低め');
+    if (noHitToday)        reasons.push('当日大当りなし');
+    if (firstHitTrend)     reasons.push(`初当り推移: ${firstHitTrend === 'up' ? '増加傾向' : firstHitTrend === 'down' ? '減少傾向' : '横ばい'}`);
+
+    return {
+      tags, primary,
+      label: primary.label, color: primary.color,
+      reasons, interval, drainSuspect, cumSpin, noHitToday,
+      borderJudge, compJudge, estimatedSpinPerK
+    };
+  } catch(e) {
+    console.error('estimateStatus error:', e);
+    return null;
   }
-
-  // タグがなければ「通常」
-  if (!tags.length) tags.push({ key:'normal', label:'— 通常', color:'#8890b8' });
-
-  // メインラベル（最初のタグ）
-  const primary = tags[0];
-
-  // 根拠テキスト
-  const reasons = [];
-  if (interval)      reasons.push(`平均当たり間隔: ${interval}回転`);
-  if (cumSpin)       reasons.push(`累積参考値: ${cumSpin.toLocaleString()}回転`);
-  if (spinPerK)      reasons.push(`現スタート: ${spinPerK}/千円${m&&m.border?'（ボーダー'+m.border+'）':''}`);
-  if (lat.maxBall)   reasons.push(`最大出玉: ${lat.maxBall.toLocaleString()}${m&&m.compLimit?' / コンプ上限'+m.compLimit.toLocaleString():''}` );
-  if (drainSuspect)  reasons.push('最大出玉は大きいが現スタート低め');
-  if (noHitToday)    reasons.push('当日大当りなし');
-  if (firstHitTrend) reasons.push(`初当り推移: ${firstHitTrend==='up'?'増加傾向':firstHitTrend==='down'?'減少傾向':'横ばい'}`);
-
-  return {
-    tags, primary,
-    label: primary.label, color: primary.color,
-    reasons, interval, drainSuspect, cumSpin, noHitToday,
-    borderJudge, compJudge, spinPerK
-  };
 }
 
 // ================================================================
@@ -1363,7 +1539,7 @@ function renderDashboard() {
     d.dataset.id = m.id;
     d.innerHTML =
       `<div style="font-size:10px;opacity:.7;line-height:1.3">${esc(m.storeName||'')}</div>` +
-      `<div>${esc(m.no)}番 ${esc(m.model)}</div>`;
+      `<div>${esc(m.no)}番 ${esc(m.model)} <span style="font-size:10px;color:var(--gold);font-weight:700">${rateLabel(m)}</span></div>`;
     sel.appendChild(d);
   });
 
@@ -1398,16 +1574,16 @@ function renderDashboardOverview(content) {
         <div style="display:flex;align-items:center;gap:10px">
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:2px">${esc(m.storeName||'')}</div>
-            <div style="font-size:16px;font-weight:700">${esc(m.model)} <span style="color:var(--accent);font-weight:500">${esc(m.no)}番</span></div>
+            <div style="font-size:16px;font-weight:700">${esc(m.model)} <span style="color:var(--accent);font-weight:500">${esc(m.no)}番</span> <span style="font-size:12px;color:var(--gold);font-weight:700">${rateLabel(m)}</span></div>
             <div style="font-size:12px;color:var(--text3);margin-top:2px">${lat ? lat.date+' / データ'+days.length+'日分' : 'データなし'}</div>
           </div>
           ${est ? est.tags.slice(0,2).map(t=>`<span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;background:${t.color}22;color:${t.color};border:1px solid ${t.color}55;white-space:nowrap">${t.label}</span>`).join('') : '<span style="font-size:12px;color:var(--text3)">データなし</span>'}
           <span style="color:var(--text3);font-size:18px">›</span>
         </div>
         ${lat ? `<div class="stats-grid" style="margin-top:12px;grid-template-columns:repeat(3,1fr)">
-          <div class="stat-box"><div class="stat-label">大当り</div><div class="stat-val gold" style="font-size:16px">${lat.totalHit}回</div></div>
-          <div class="stat-box"><div class="stat-label">初当り</div><div class="stat-val acc" style="font-size:16px">${lat.firstHit}回</div></div>
-          <div class="stat-box"><div class="stat-label">総回転</div><div class="stat-val" style="font-size:14px">${lat.totalSpin.toLocaleString()}</div></div>
+          <div class="stat-box"><div class="stat-label">大当り</div><div class="stat-val gold" style="font-size:16px">${Number(lat.totalHit)||0}回</div></div>
+          <div class="stat-box"><div class="stat-label">初当り</div><div class="stat-val acc" style="font-size:16px">${Number(lat.firstHit)||0}回</div></div>
+          <div class="stat-box"><div class="stat-label">総回転</div><div class="stat-val" style="font-size:14px">${(Number(lat.totalSpin)||0).toLocaleString()}</div></div>
         </div>` : ''}
       </div>`;
     }).join('')}
@@ -1446,7 +1622,7 @@ function renderDashboardDetail(content, mid) {
     <div class="card">
       <div style="margin-bottom:12px">
         <div class="store-pill">${esc(m.storeName||'')}</div>
-        <div style="font-size:22px;font-weight:700;line-height:1.2;margin-top:4px">${esc(m.model)}</div>
+        <div style="font-size:22px;font-weight:700;line-height:1.2;margin-top:4px">${esc(m.model)} <span style="font-size:16px;color:var(--gold);font-weight:700">${rateLabel(m)}</span></div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
           <span class="text-sm">${esc(m.no)}番台</span>
           <span class="text-sm">直近日: <span style="color:var(--accent)">${lat?lat.date:'データなし'}</span></span>
@@ -1461,12 +1637,12 @@ function renderDashboardDetail(content, mid) {
       </div>` : ''}
       ${lat ? `
       <div class="stats-grid">
-        <div class="stat-box"><div class="stat-label">大当り</div><div class="stat-val gold">${lat.totalHit}回</div></div>
-        <div class="stat-box"><div class="stat-label">初当り</div><div class="stat-val acc">${lat.firstHit}回</div></div>
-        <div class="stat-box"><div class="stat-label">総回転</div><div class="stat-val">${lat.totalSpin.toLocaleString()}</div></div>
-        <div class="stat-box"><div class="stat-label">現スタート</div><div class="stat-val ${est&&est.borderJudge==='high'?'neg':est&&est.borderJudge==='good'?'pos':''}">${lat.currentStart}</div></div>
-        <div class="stat-box"><div class="stat-label">最大出玉</div><div class="stat-val teal">${lat.maxBall.toLocaleString()}</div></div>
-        <div class="stat-box"><div class="stat-label">累積参考値</div><div class="stat-val" style="font-size:15px">${lat.cumulativeSpin ? lat.cumulativeSpin.toLocaleString() : '—'}</div></div>
+        <div class="stat-box"><div class="stat-label">大当り</div><div class="stat-val gold">${Number(lat.totalHit)||0}回</div></div>
+        <div class="stat-box"><div class="stat-label">初当り</div><div class="stat-val acc">${Number(lat.firstHit)||0}回</div></div>
+        <div class="stat-box"><div class="stat-label">総回転</div><div class="stat-val">${(Number(lat.totalSpin)||0).toLocaleString()}</div></div>
+        <div class="stat-box"><div class="stat-label">現ハマり</div><div class="stat-val ${est&&est.borderJudge==='high'?'neg':est&&est.borderJudge==='good'?'pos':''}">${Number(lat.currentStart)||0}</div></div>
+        <div class="stat-box"><div class="stat-label">最大出玉</div><div class="stat-val teal">${(Number(lat.maxBall)||0).toLocaleString()}</div></div>
+        <div class="stat-box"><div class="stat-label">累積参考値</div><div class="stat-val" style="font-size:15px">${lat.cumulativeSpin ? Number(lat.cumulativeSpin).toLocaleString() : '—'}</div></div>
       </div>` : '<div class="empty">データを入力してください</div>'}
     </div>
 
@@ -1491,7 +1667,7 @@ function renderDashboardDetail(content, mid) {
               <th style="padding:6px 4px;text-align:right;font-weight:600">初当</th>
               <th style="padding:6px 4px;text-align:right;font-weight:600">回転</th>
               <th style="padding:6px 4px;text-align:right;font-weight:600">最大出玉</th>
-              <th style="padding:6px 4px;text-align:right;font-weight:600">スタート</th>
+              <th style="padding:6px 4px;text-align:right;font-weight:600">編集</th>
             </tr>
           </thead>
           <tbody>
@@ -1505,11 +1681,15 @@ function renderDashboardDetail(content, mid) {
                   <div style="font-weight:${isLatest?'700':'400'};color:${isLatest?'var(--accent)':'var(--text)'}">${d.date.slice(5)}</div>
                   ${tagHtml}
                 </td>
-                <td style="padding:7px 4px;text-align:right;color:var(--gold)">${d.totalHit}</td>
-                <td style="padding:7px 4px;text-align:right;color:var(--teal)">${d.firstHit}</td>
-                <td style="padding:7px 4px;text-align:right">${d.totalSpin.toLocaleString()}</td>
-                <td style="padding:7px 4px;text-align:right">${d.maxBall.toLocaleString()}</td>
-                <td style="padding:7px 4px;text-align:right">${d.currentStart}</td>
+                <td style="padding:7px 4px;text-align:right;color:var(--gold)">${Number(d.totalHit)||0}</td>
+                <td style="padding:7px 4px;text-align:right;color:var(--teal)">${Number(d.firstHit)||0}</td>
+                <td style="padding:7px 4px;text-align:right">${(Number(d.totalSpin)||0).toLocaleString()}</td>
+                <td style="padding:7px 4px;text-align:right">${(Number(d.maxBall)||0).toLocaleString()}</td>
+                <td style="padding:7px 4px;text-align:right">
+                  <button class="sm secondary daily-edit-btn"
+                    data-mid="${mid}" data-date="${d.date}"
+                    style="font-size:11px;min-height:32px;padding:0 8px">✏️</button>
+                </td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -1700,7 +1880,7 @@ function renderMachines() {
       return `<div class="machine-row">
         <div class="machine-row-info">
           <div class="machine-row-model">
-            ${esc(m.model)} <span class="machine-row-no">${esc(m.no)}番</span>
+            ${esc(m.model)} <span class="machine-row-no">${esc(m.no)}番</span> <span style="font-size:11px;color:var(--gold);font-weight:700">${rateLabel(m)}</span>
           </div>
           <div class="machine-row-sub">
             データ ${days.length}日分${last?' &nbsp;|&nbsp; 最終: '+last:''}
@@ -1752,7 +1932,7 @@ function populateSelects() {
       ms.forEach(m => {
         const o = document.createElement('option');
         o.value = m.id;
-        o.textContent = `${m.no}番 ${m.model}`;
+        o.textContent = `${m.no}番 ${m.model} ${rateLabel(m)}`;
         g.appendChild(o);
       });
       el.appendChild(g);
@@ -1781,9 +1961,17 @@ function openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.add('open');
-  if (id==='exportModal') document.getElementById('export-text').value = JSON.stringify(db,null,2);
+  if (id === 'exportModal') {
+    const et = document.getElementById('export-text');
+    if (et) et.value = JSON.stringify(db, null, 2);
+  }
 }
-function closeModal(id) { const el=document.getElementById(id); if(el) el.classList.remove('open'); }
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+  // deleteConfirmModal を閉じた時は必ず pendingDeleteId をリセット
+  if (id === 'deleteConfirmModal') pendingDeleteId = null;
+}
 
 function copyExport() {
   const t = document.getElementById('export-text');
@@ -1818,6 +2006,10 @@ function toast(msg) {
 }
 
 function renderAll() {
+  // undo ボタンの表示切り替え
+  const undoBtn = document.getElementById('btn-undo');
+  if (undoBtn) undoBtn.style.display = _undoSnapshot ? 'inline-flex' : 'none';
+
   try { renderDashboard(); }    catch(e) { console.error('renderDashboard error:', e); }
   try { populateSelects(); }    catch(e) { console.error('populateSelects error:', e); }
   try { renderPredict(); }      catch(e) { console.error('renderPredict error:', e); }
@@ -1834,16 +2026,24 @@ function todayStr() { return new Date().toISOString().slice(0,10); }
 // ================================================================
 // INIT
 // ================================================================
+
+// iPhoneのScript errorを確実にキャッチ
+window.onerror = function(msg, src, line, col, err) {
+  console.error('JS ERROR:', msg, 'line:'+line, 'col:'+col, err);
+  return false;
+};
+
+let _eventsbound = false; // 二重バインド防止フラグ
+
 try {
-  bindEvents();
+  if (!_eventsbound) { bindEvents(); _eventsbound = true; }
   renderAll();
 } catch(e) {
   console.error('INIT ERROR:', e);
-  // localStorage 破損時の復旧試行
   try {
     localStorage.removeItem(LS_KEY);
     db = { machines:[], dailyData:{}, predictions:[] };
-    bindEvents();
+    // bindEventsは再呼び出しせず、renderAllだけリトライ
     renderAll();
     console.warn('localStorage cleared and restarted');
   } catch(e2) {
