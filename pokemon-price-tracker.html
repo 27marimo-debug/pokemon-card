@@ -800,13 +800,35 @@ function renderManageList() {
       list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2)">まだ追加されていません</div>';
       return;
     }
-    list.innerHTML = items.map(function(item, i) {
-      return '<div class="manage-row" data-id="' + escHtml(item.id || item.name) + '">' +
-        '<span class="manage-handle">☰</span>' +
-        '<span class="manage-name" style="flex:1">' + escHtml(item.name) + '</span>' +
-        '<button class="manage-del" onclick="askDeleteById(\'' + escHtml(item.id || item.name) + '\')" style="touch-action:manipulation">🗑</button>' +
-        '</div>';
-    }).join('');
+
+    var rows = '';
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var itemId = item.id || item.name;
+      rows += '<div class="manage-row" data-id="' + escHtml(itemId) + '">'
+            + '<span class="manage-handle">☰</span>'
+            + '<span class="manage-name" style="flex:1">' + escHtml(item.name) + '</span>'
+            + '<button class="manage-move" data-edit-id="' + escHtml(itemId) + '" style="background:none;border:none;font-size:16px;cursor:pointer;touch-action:manipulation;padding:0 4px;">✏️</button>'
+            + '<button class="manage-del" data-del-id="' + escHtml(itemId) + '" style="touch-action:manipulation;background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:0 2px;">🗑</button>'
+            + '</div>';
+    }
+    list.innerHTML = rows;
+
+    // ✏️ボタン
+    list.querySelectorAll('[data-edit-id]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openEditModal(btn.dataset.editId);
+      });
+    });
+
+    // 🗑ボタン
+    list.querySelectorAll('[data-del-id]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        askDeleteById(btn.dataset.delId);
+      });
+    });
 
     initTouchSort(list);
   } catch(e) {
@@ -846,6 +868,8 @@ function openEditModal(id) {
   document.getElementById('editItemId').value = id;
   document.getElementById('editItemName').value = item.name;
   document.getElementById('editItemReleaseDate').value = item.releaseDate || '';
+  // 管理モーダルを先に閉じてから編集モーダルを開く
+  closeModal('modalManage');
   openModal('modalEdit');
 }
 
@@ -860,7 +884,7 @@ document.getElementById('btnSaveEdit').addEventListener('click', function() {
   item.releaseDate = newRelease;
   // meta: 将来の拡張フィールド用（互換性を維持しつつ保持）
   if (!item.meta) item.meta = {};
-  save(); renderMain(); renderManageList();
+  save(); renderMain();
   closeModal('modalEdit');
   showToast('更新しました ✓');
 }, { passive: true });
