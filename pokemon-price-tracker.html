@@ -375,7 +375,14 @@ const STORAGE_KEY = 'pokeca_price_tracker_v1';
 let state = { box: [], pack: [] }; // { name, prices: [{date, value}] }
 
 function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch(e) {
+    console.error('[save error]', e.message, e);
+    showToast('保存に失敗しました');
+    return false;
+  }
 }
 
 // ── 現在タブ ──
@@ -954,41 +961,32 @@ function ensureId(item) {
   return item;
 }
 
-function mergeWithInitial(saved, initial) {
-  const result = JSON.parse(JSON.stringify(initial));
-  result.forEach(ensureId);
-  const initialNames = new Set(initial.map(x => x.name));
-  saved.forEach(item => {
-    ensureId(item);
-    if (!initialNames.has(item.name)) result.push(item);
-  });
-  const savedMap = {};
-  saved.forEach(item => { savedMap[item.name] = item; });
-  result.forEach(item => {
-    if (savedMap[item.name]) {
-      const savedDates = new Set(item.prices.map(p => p.date));
-      savedMap[item.name].prices.forEach(p => {
-        if (!savedDates.has(p.date)) item.prices.push(p);
-      });
-      item.prices.sort((a,b) => a.date.localeCompare(b.date));
-    }
-  });
-  return result;
-}
-
+// データ読み込み：localStorageが唯一の正。
+// 初期データは「一度も保存がない時」だけ投入する（以後は触らない）。
 function load() {
+  let saved = null;
   try {
     const s = localStorage.getItem(STORAGE_KEY);
-    if (s) {
-      const saved = JSON.parse(s);
-      state.box = mergeWithInitial(saved.box || [], INITIAL_DATA.box);
-      state.pack = mergeWithInitial(saved.pack || [], INITIAL_DATA.pack);
-      save();
-      return;
-    }
-  } catch(e) {}
-  state = JSON.parse(JSON.stringify(INITIAL_DATA));
-  save();
+    if (s) saved = JSON.parse(s);
+  } catch(e) {
+    console.error('[load parse error]', e.message, e);
+  }
+
+  if (saved && saved.box && saved.pack) {
+    // 既存データを尊重。初期データで上書きしない。
+    state.box = saved.box;
+    state.pack = saved.pack;
+    // 全アイテムにid/meta/releaseDate/pricesを補完（後方互換）
+    state.box.forEach(ensureId);
+    state.pack.forEach(ensureId);
+    save(); // 補完結果を保存
+  } else {
+    // 初回起動のみ：初期データを投入
+    state = JSON.parse(JSON.stringify(INITIAL_DATA));
+    state.box.forEach(ensureId);
+    state.pack.forEach(ensureId);
+    save();
+  }
 }
 load();
 renderMain();
